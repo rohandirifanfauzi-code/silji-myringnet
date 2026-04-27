@@ -1,0 +1,48 @@
+<nav class="navbar navbar-expand-lg app-navbar">
+  <div class="container-fluid px-3 px-lg-4">
+    <a class="navbar-brand d-flex align-items-center gap-3" href="/dashboard">
+      <span class="brand-mark">M</span>
+      <span>
+        <span class="brand-title">SILJI MyRingNet</span>
+        <small class="brand-subtitle d-block">Monitoring layanan internet</small>
+      </span>
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="mainNav">
+      <ul class="navbar-nav me-auto app-nav-links">
+        <li class="nav-item"><a class="nav-link <%= currentPath.startsWith('/dashboard') ? 'active' : '' %>" href="/dashboard">Dashboard</a></li>
+        <% if (hasRole('admin', 'manajemen')) { %>
+          <li class="nav-item"><a class="nav-link <%= currentPath.startsWith('/pelanggan') ? 'active' : '' %>" href="/pelanggan">Pelanggan</a></li>
+        <% } %>
+        <% if (hasRole('admin', 'manajemen')) { %>
+          <li class="nav-item"><a class="nav-link <%= currentPath.startsWith('/paket') ? 'active' : '' %>" href="/paket">Paket</a></li>
+        <% } %>
+        <% if (hasRole('admin', 'manajemen', 'pelanggan')) { %>
+          <li class="nav-item"><a class="nav-link <%= currentPath.startsWith('/tagihan') ? 'active' : '' %>" href="/tagihan">Tagihan</a></li>
+        <% } %>
+        <% if (hasRole('admin', 'manajemen', 'pelanggan')) { %>
+          <li class="nav-item"><a class="nav-link <%= currentPath.startsWith('/pembayaran') ? 'active' : '' %>" href="/pembayaran">Pembayaran</a></li>
+        <% } %>
+        <% if (hasRole('admin', 'manajemen', 'pelanggan', 'teknisi')) { %>
+          <li class="nav-item"><a class="nav-link <%= currentPath.startsWith('/keluhan') ? 'active' : '' %>" href="/keluhan"><%= hasRole('teknisi') ? 'Tugas' : 'Keluhan' %></a></li>
+        <% } %>
+        <% if (hasRole('admin', 'manajemen')) { %>
+          <li class="nav-item"><a class="nav-link <%= currentPath.startsWith('/teknisi') ? 'active' : '' %>" href="/teknisi">Teknisi</a></li>
+        <% } %>
+        <li class="nav-item"><a class="nav-link <%= currentPath.startsWith('/notifikasi') ? 'active' : '' %>" href="/notifikasi">Notifikasi</a></li>
+      </ul>
+      <div class="d-flex align-items-center gap-3 app-user-panel">
+        <div class="user-chip">
+          <span class="user-chip__eyebrow">Login aktif</span>
+          <strong><%= currentUser ? currentUser.nama : '-' %></strong>
+          <span class="user-chip__role"><%= currentUser ? currentUser.role : '-' %></span>
+        </div>
+        <form action="/logout" method="post">
+          <button type="submit" class="btn btn-light btn-sm app-logout-btn">Logout</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</nav>

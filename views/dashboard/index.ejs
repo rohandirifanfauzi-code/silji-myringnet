@@ -1,0 +1,93 @@
+<%- include('../partials/header') %>
+<%- include('../partials/navbar') %>
+<main class="container py-4">
+  <%- include('../partials/flash') %>
+  <section class="hero-panel mb-4">
+    <div class="hero-panel__content">
+      <div>
+        <span class="hero-panel__eyebrow">Sistem Informasi Layanan Internet</span>
+        <h1 class="hero-panel__title">Operasional MyRingNet dalam satu tampilan yang lebih rapi.</h1>
+        <p class="hero-panel__text mb-0">Pantau pelanggan aktif, tagihan berjalan, pembayaran masuk, dan progres penanganan keluhan tanpa berpindah-pindah modul.</p>
+      </div>
+      <div class="hero-panel__meta">
+        <div><span>Role aktif</span><strong><%= currentUser ? currentUser.role : '-' %></strong></div>
+        <div><span>Portal</span><strong>localhost:3000</strong></div>
+      </div>
+    </div>
+  </section>
+  <div class="row g-4 mb-4">
+    <div class="col-md-6 col-xl-3"><div class="stat-card stat-card--cyan"><span><%= metricLabels.totalPelanggan %></span><strong><%= summary.totalPelanggan %></strong><small>Ringkasan utama role aktif</small></div></div>
+    <div class="col-md-6 col-xl-3"><div class="stat-card stat-card--gold"><span><%= metricLabels.totalTagihan %></span><strong><%= summary.totalTagihan %></strong><small>Data terbaru dari sistem</small></div></div>
+    <div class="col-md-6 col-xl-3"><div class="stat-card stat-card--green"><span><%= metricLabels.totalPembayaran %></span><strong><%= summary.totalPembayaran %></strong><small>Ringkasan terbaru dari sistem</small></div></div>
+    <div class="col-md-6 col-xl-3"><div class="stat-card stat-card--coral"><span><%= metricLabels.totalKeluhan %></span><strong><%= summary.totalKeluhan %></strong><small>Monitoring operasional berjalan</small></div></div>
+    <% if (summary.infoTambahan) { %>
+      <div class="col-md-6 col-xl-3"><div class="stat-card stat-card--gold"><span><%= summary.infoTambahan.label %></span><strong><%= summary.infoTambahan.total %></strong><small>Ringkasan khusus role aktif</small></div></div>
+    <% } %>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-8">
+      <div class="card shadow-sm border-0 app-card">
+        <div class="card-body">
+          <div class="section-heading mb-3">
+            <span class="section-heading__eyebrow">Alur Operasional</span>
+            <h2 class="h5 mb-0"><%= hasRole('manajemen') ? 'Ringkasan Proses Bisnis' : 'Flow Sistem' %></h2>
+          </div>
+          <div class="row g-3 mt-1">
+            <div class="col-md-4">
+              <div class="flow-box">
+                <h3 class="h6">Billing Flow</h3>
+                <ol>
+                  <li>Scheduler jalan awal bulan</li>
+                  <li>Generate tagihan otomatis</li>
+                  <li>Simpan ke database</li>
+                  <li>Notifikasi dibuat</li>
+                </ol>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="flow-box">
+                <h3 class="h6">Pembayaran Flow</h3>
+                <ol>
+                  <li>User bayar</li>
+                  <li>Status tagihan diupdate</li>
+                  <li>Transaksi disimpan</li>
+                </ol>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="flow-box">
+                <h3 class="h6">Keluhan Flow</h3>
+                <ol>
+                  <li>Buat tiket</li>
+                  <li>Assign teknisi</li>
+                  <li>Update status</li>
+                  <li>Upload bukti pekerjaan</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card shadow-sm border-0 app-card">
+        <div class="card-body">
+          <div class="section-heading mb-3">
+            <span class="section-heading__eyebrow">Aktivitas Sistem</span>
+            <h2 class="h5 mb-0">Notifikasi Terbaru</h2>
+          </div>
+          <div class="list-group list-group-flush">
+            <% notifications.forEach((item) => { %>
+              <div class="list-group-item px-0 notification-item">
+                <div class="fw-semibold"><%= item.pesan %></div>
+                <small class="text-muted"><%= new Date(item.tanggal).toLocaleString('id-ID') %></small>
+              </div>
+            <% }) %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<%- include('../partials/footer') %>

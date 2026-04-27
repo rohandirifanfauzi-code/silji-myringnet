@@ -1,0 +1,37 @@
+<%- include('../partials/header') %>
+<%- include('../partials/navbar') %>
+<main class="container py-4">
+  <div class="card shadow-sm border-0 app-card">
+    <div class="card-body">
+      <h1 class="h4 mb-4"><%= item ? 'Edit' : 'Buat' %> Keluhan</h1>
+      <form method="post" action="<%= item ? `/keluhan/${item.id}?_method=PUT` : '/keluhan' %>" class="row g-3">
+        <% if (currentUser.role !== 'pelanggan') { %>
+          <div class="col-md-6">
+            <label class="form-label">Pelanggan</label>
+            <select class="form-select" name="id_pelanggan" required>
+              <% pelanggan.forEach((row) => { %>
+                <option value="<%= row.id %>" <%= String(item?.id_pelanggan || '') === String(row.id) ? 'selected' : '' %>><%= row.nama %></option>
+              <% }) %>
+            </select>
+          </div>
+        <% } %>
+        <div class="col-md-6"><label class="form-label">Tanggal</label><input type="date" class="form-control" name="tanggal" value="<%= item ? new Date(item.tanggal).toISOString().split('T')[0] : '' %>" required /></div>
+        <div class="col-12"><label class="form-label">Deskripsi Keluhan</label><textarea class="form-control" name="deskripsi" rows="4" required><%= item?.deskripsi || '' %></textarea></div>
+        <% if (currentUser.role !== 'pelanggan') { %>
+          <div class="col-md-6">
+            <label class="form-label">Status</label>
+            <select class="form-select" name="status">
+              <% ['BARU', 'DIPROSES', 'SELESAI'].forEach((status) => { %>
+                <option value="<%= status %>" <%= (item?.status || 'BARU') === status ? 'selected' : '' %>><%= status %></option>
+              <% }) %>
+            </select>
+          </div>
+        <% } else { %>
+          <input type="hidden" name="status" value="<%= item?.status || 'BARU' %>" />
+        <% } %>
+        <div class="col-12 d-flex gap-2"><button class="btn btn-primary">Simpan</button><a href="/keluhan" class="btn btn-secondary">Kembali</a></div>
+      </form>
+    </div>
+  </div>
+</main>
+<%- include('../partials/footer') %>

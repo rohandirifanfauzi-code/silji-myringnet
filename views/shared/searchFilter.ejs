@@ -1,0 +1,33 @@
+<div class="card border-0 shadow-sm mb-3 app-card">
+  <div class="card-body">
+    <form action="<%= action %>" method="get" class="row g-3">
+      <div class="<%= showStatus ? 'col-md-5' : 'col-md-8' %>">
+        <label class="form-label">Search</label>
+        <input type="text" class="form-control" name="search" value="<%= query.search || '' %>" placeholder="Cari data..." />
+      </div>
+      <% if (showStatus) { %>
+        <div class="col-md-3">
+          <label class="form-label">Filter Status</label>
+          <select class="form-select" name="status">
+            <option value="">Semua</option>
+            <% (statusOptions || []).forEach((status) => { %>
+              <option value="<%= status %>" <%= query.status === status ? 'selected' : '' %>><%= status %></option>
+            <% }) %>
+          </select>
+        </div>
+      <% } %>
+      <div class="col-md-2">
+        <label class="form-label">Per Halaman</label>
+        <select class="form-select" name="limit">
+          <% [5, 10, 20, 50].forEach((limit) => { %>
+            <option value="<%= limit %>" <%= Number(query.limit || 10) === limit ? 'selected' : '' %>><%= limit %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="col-md-2 d-flex align-items-end gap-2">
+        <button class="btn btn-primary w-100">Terapkan</button>
+        <a href="<%= action %>" class="btn btn-outline-secondary w-100">Reset</a>
+      </div>
+    </form>
+  </div>
+</div>

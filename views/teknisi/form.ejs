@@ -1,0 +1,23 @@
+<%- include('../partials/header') %>
+<%- include('../partials/navbar') %>
+<main class="container py-4">
+  <div class="card shadow-sm border-0 app-card">
+    <div class="card-body">
+      <h1 class="h4 mb-4"><%= item ? 'Edit' : 'Tambah' %> Teknisi</h1>
+      <form method="post" action="<%= item ? `/teknisi/${item.id}?_method=PUT` : '/teknisi' %>" class="row g-3">
+        <div class="col-md-6"><label class="form-label">Nama</label><input class="form-control" name="nama" value="<%= item?.nama || '' %>" required /></div>
+        <div class="col-md-6"><label class="form-label">No HP</label><input class="form-control" name="no_hp" value="<%= item?.no_hp || '' %>" required /></div>
+        <div class="col-md-6">
+          <label class="form-label">Status</label>
+          <select class="form-select" name="status">
+            <% ['AKTIF', 'CUTI', 'NONAKTIF'].forEach((status) => { %>
+              <option value="<%= status %>" <%= item?.status === status ? 'selected' : '' %>><%= status %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="col-12 d-flex gap-2"><button class="btn btn-primary">Simpan</button><a href="/teknisi" class="btn btn-secondary">Kembali</a></div>
+      </form>
+    </div>
+  </div>
+</main>
+<%- include('../partials/footer') %>

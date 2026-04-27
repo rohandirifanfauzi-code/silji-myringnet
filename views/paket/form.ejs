@@ -1,0 +1,17 @@
+<%- include('../partials/header') %>
+<%- include('../partials/navbar') %>
+<main class="container py-4">
+  <div class="card shadow-sm border-0 app-card">
+    <div class="card-body">
+      <h1 class="h4 mb-4"><%= item ? 'Edit' : 'Tambah' %> Paket</h1>
+      <form method="post" action="<%= item ? `/paket/${item.id}?_method=PUT` : '/paket' %>" class="row g-3">
+        <div class="col-md-6"><label class="form-label">Nama Paket</label><input class="form-control" name="nama_paket" value="<%= item?.nama_paket || '' %>" required /></div>
+        <div class="col-md-6"><label class="form-label">Kecepatan</label><input class="form-control" name="kecepatan" value="<%= item?.kecepatan || '' %>" required /></div>
+        <div class="col-md-6"><label class="form-label">Harga</label><input type="number" class="form-control" name="harga" value="<%= item?.harga || '' %>" required /></div>
+        <div class="col-12"><label class="form-label">Deskripsi</label><textarea class="form-control" name="deskripsi" rows="3"><%= item?.deskripsi || '' %></textarea></div>
+        <div class="col-12 d-flex gap-2"><button class="btn btn-primary">Simpan</button><a href="/paket" class="btn btn-secondary">Kembali</a></div>
+      </form>
+    </div>
+  </div>
+</main>
+<%- include('../partials/footer') %>

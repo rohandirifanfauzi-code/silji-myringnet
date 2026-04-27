@@ -1,0 +1,33 @@
+<%- include('../partials/header') %>
+<div class="login-page">
+  <div class="login-backdrop"></div>
+  <div class="card shadow-lg border-0 login-card">
+    <div class="card-body p-4 p-md-5">
+      <div class="login-badge mb-3">Internal Portal</div>
+      <div class="mb-4">
+        <h1 class="login-title">SILJI for MyRingNet</h1>
+        <p class="login-subtitle mb-0">Kelola pelanggan, tagihan, pembayaran, teknisi, dan tiket gangguan dari satu dashboard.</p>
+      </div>
+      <%- include('../partials/flash') %>
+      <form action="/login" method="post" class="vstack gap-3">
+        <div>
+          <label class="form-label">Username</label>
+          <input type="text" name="username" class="form-control" required />
+        </div>
+        <div>
+          <label class="form-label">Password</label>
+          <input type="password" name="password" class="form-control" required />
+        </div>
+        <button type="submit" class="btn btn-primary w-100 btn-lg">Masuk ke Sistem</button>
+      </form>
+      <div class="demo-box mt-4">
+        <div class="demo-box__title">Akun demo</div>
+        <div class="small text-muted">admin / admin123</div>
+        <div class="small text-muted">pelanggan1 / pelanggan123</div>
+        <div class="small text-muted">teknisi1 / teknisi123</div>
+        <div class="small text-muted">manajemen1 / manajemen123</div>
+      </div>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

@@ -1,0 +1,41 @@
+<%- include('../partials/header') %>
+<%- include('../partials/navbar') %>
+<main class="container py-4">
+  <div class="card shadow-sm border-0 app-card">
+    <div class="card-body">
+      <h1 class="h4 mb-4"><%= item ? 'Edit' : 'Tambah' %> Tagihan</h1>
+      <form method="post" action="<%= item ? `/tagihan/${item.id}?_method=PUT` : '/tagihan' %>" class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Pelanggan</label>
+          <select class="form-select" name="id_pelanggan" required>
+            <option value="">Pilih pelanggan</option>
+            <% pelanggan.forEach((row) => { %>
+              <option value="<%= row.id %>" <%= String(item?.id_pelanggan || '') === String(row.id) ? 'selected' : '' %>><%= row.nama %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Paket</label>
+          <select class="form-select" name="id_paket" required>
+            <option value="">Pilih paket</option>
+            <% paket.forEach((row) => { %>
+              <option value="<%= row.id %>" <%= String(item?.id_paket || '') === String(row.id) ? 'selected' : '' %>><%= row.nama_paket %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="col-md-4"><label class="form-label">Tanggal Tagihan</label><input type="date" class="form-control" name="tanggal_tagihan" value="<%= item ? new Date(item.tanggal_tagihan).toISOString().split('T')[0] : '' %>" required /></div>
+        <div class="col-md-4"><label class="form-label">Jumlah Tagihan</label><input type="number" class="form-control" name="jumlah_tagihan" value="<%= item?.jumlah_tagihan || '' %>" required /></div>
+        <div class="col-md-4">
+          <label class="form-label">Status</label>
+          <select class="form-select" name="status_tagihan" required>
+            <% ['BELUM BAYAR', 'LUNAS'].forEach((status) => { %>
+              <option value="<%= status %>" <%= item?.status_tagihan === status ? 'selected' : '' %>><%= status %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="col-12 d-flex gap-2"><button class="btn btn-primary">Simpan</button><a href="/tagihan" class="btn btn-secondary">Kembali</a></div>
+      </form>
+    </div>
+  </div>
+</main>
+<%- include('../partials/footer') %>

@@ -1,0 +1,44 @@
+<%- include('../partials/header') %>
+<%- include('../partials/navbar') %>
+<main class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h4 mb-0"><%= hasRole('pelanggan') ? 'Tagihan Saya' : 'Data Tagihan' %></h1>
+    <% if (hasRole('admin')) { %>
+      <a href="/tagihan/create" class="btn btn-primary">Tambah Tagihan</a>
+    <% } %>
+  </div>
+  <%- include('../partials/flash') %>
+  <%- include('../shared/searchFilter', { action: '/tagihan', showStatus: true, query, statusOptions: ['BELUM BAYAR', 'LUNAS'] }) %>
+  <div class="card shadow-sm border-0 app-card">
+    <div class="table-responsive">
+      <table class="table table-hover app-table mb-0">
+        <thead class="table-light"><tr><th>Pelanggan</th><th>Paket</th><th>Tanggal</th><th>Jumlah</th><th>Status</th><th><%= hasRole('admin') ? 'Aksi' : 'Keterangan' %></th></tr></thead>
+        <tbody>
+          <% data.forEach((item) => { %>
+            <tr>
+              <td><%= item.nama_pelanggan %></td>
+              <td><%= item.nama_paket %></td>
+              <td><%= new Date(item.tanggal_tagihan).toLocaleDateString('id-ID') %></td>
+              <td>Rp <%= Number(item.jumlah_tagihan).toLocaleString('id-ID') %></td>
+              <td><span class="badge <%= item.status_tagihan === 'LUNAS' ? 'bg-success' : 'bg-warning text-dark' %>"><%= item.status_tagihan %></span></td>
+              <td>
+                <% if (hasRole('admin')) { %>
+                  <div class="d-flex gap-2">
+                    <a href="/tagihan/<%= item.id %>/edit" class="btn btn-sm btn-outline-primary">Edit</a>
+                    <form action="/tagihan/<%= item.id %>/delete" method="post">
+                      <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Hapus data?')">Hapus</button>
+                    </form>
+                  </div>
+                <% } else { %>
+                  <span class="small text-muted">Tanggal tagihan mengikuti tanggal pemasangan pertama.</span>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="mt-3"><%- include('../partials/pagination', { pagination, query }) %></div>
+</main>
+<%- include('../partials/footer') %>
