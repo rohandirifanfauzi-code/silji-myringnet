@@ -4,6 +4,7 @@ const userModel = require("../models/userModel");
 const { pool } = require("../models/baseModel");
 const accountService = require("../services/accountService");
 const notificationService = require("../services/notificationService");
+const { validatePelanggan } = require("../services/validationService");
 
 async function index(req, res, next) {
   try {
@@ -52,6 +53,13 @@ async function createForm(req, res, next) {
 async function store(req, res, next) {
   const connection = await pool.getConnection();
   try {
+    const errors = validatePelanggan(req.body);
+    if (errors.length) {
+      errors.forEach((message) => req.flash("error", message));
+      res.redirect("/pelanggan/create");
+      return;
+    }
+
     await connection.beginTransaction();
     const credentials = await accountService.buildCustomerAccount({
       nama: req.body.nama,
@@ -117,6 +125,13 @@ async function editForm(req, res, next) {
 
 async function update(req, res, next) {
   try {
+    const errors = validatePelanggan(req.body);
+    if (errors.length) {
+      errors.forEach((message) => req.flash("error", message));
+      res.redirect(`/pelanggan/${req.params.id}/edit`);
+      return;
+    }
+
     const existing = await pelangganModel.getById(req.params.id);
     const pelangganPayload = {
       nama: req.body.nama,

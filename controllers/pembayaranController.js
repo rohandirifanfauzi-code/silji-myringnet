@@ -2,6 +2,14 @@ const pembayaranModel = require("../models/pembayaranModel");
 const tagihanModel = require("../models/tagihanModel");
 const notificationService = require("../services/notificationService");
 const QRCode = require("qrcode");
+const {
+  BILL_STATUS,
+  PAYMENT_STATUS,
+} = require("../constants/statuses");
+const {
+  validatePaymentPreparation,
+  validateCashPayment,
+} = require("../services/validationService");
 
 function normalizeMethod(value) {
   return String(value || "").toLowerCase();
@@ -52,7 +60,7 @@ async function index(req, res, next) {
     const tagihan = await tagihanModel.getAll({
       page: 1,
       limit: 200,
-      status: "BELUM BAYAR",
+      status: BILL_STATUS.UNPAID,
       id_pelanggan:
         req.user.role === "pelanggan"
           ? req.user.pelanggan_id
@@ -86,6 +94,13 @@ async function index(req, res, next) {
 
 async function prepare(req, res, next) {
   try {
+    const validationErrors = validatePaymentPreparation(req.body);
+    if (validationErrors.length) {
+      validationErrors.forEach((message) => req.flash("error", message));
+      res.redirect("/pembayaran");
+      return;
+    }
+
     const tagihan = await tagihanModel.getById(req.body.id_tagihan);
     if (!tagihan) {
       req.flash("error", "Tagihan tidak ditemukan.");
@@ -122,7 +137,7 @@ async function prepare(req, res, next) {
         va_number: metode === "va" ? buildVaNumber(tagihan) : null,
         jumlah_bayar: tagihan.jumlah_tagihan,
         tanggal_bayar: new Date(),
-        status: "pending",
+        status: PAYMENT_STATUS.PENDING,
       });
       payment = await pembayaranModel.getById(paymentId);
     }
@@ -138,6 +153,13 @@ async function store(req, res, next) {
     const metode = normalizeMethod(req.body.metode);
 
     if (metode === "cash") {
+      const validationErrors = validateCashPayment(req.body);
+      if (validationErrors.length) {
+        validationErrors.forEach((message) => req.flash("error", message));
+        res.redirect("/pembayaran");
+        return;
+      }
+
       const tagihan = await tagihanModel.getById(req.body.id_tagihan);
       if (!tagihan) {
         req.flash("error", "Tagihan tidak ditemukan.");
@@ -161,9 +183,9 @@ async function store(req, res, next) {
         va_number: null,
         jumlah_bayar: amount,
         tanggal_bayar: req.body.tanggal_bayar,
-        status: "paid",
+        status: PAYMENT_STATUS.PAID,
       });
-      await tagihanModel.update(tagihan.id, { status_tagihan: "LUNAS" });
+      await tagihanModel.update(tagihan.id, { status_tagihan: BILL_STATUS.PAID });
       await notificationService.createNotification(
         `Pembayaran cash untuk tagihan #${tagihan.id} berhasil diproses.`
       );
@@ -189,10 +211,10 @@ async function store(req, res, next) {
     }
 
     await pembayaranModel.update(payment.id, {
-      status: "paid",
+      status: PAYMENT_STATUS.PAID,
       tanggal_bayar: new Date(),
     });
-    await tagihanModel.update(payment.id_tagihan, { status_tagihan: "LUNAS" });
+    await tagihanModel.update(payment.id_tagihan, { status_tagihan: BILL_STATUS.PAID });
     await notificationService.createNotification(
       `Pembayaran ${payment.metode.toUpperCase()} untuk tagihan #${payment.id_tagihan} berhasil diproses.`
     );

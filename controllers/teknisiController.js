@@ -2,6 +2,7 @@ const teknisiModel = require("../models/teknisiModel");
 const userModel = require("../models/userModel");
 const { pool } = require("../models/baseModel");
 const accountService = require("../services/accountService");
+const { validateTeknisi } = require("../services/validationService");
 
 async function index(req, res, next) {
   try {
@@ -24,6 +25,13 @@ function createForm(req, res) {
 async function store(req, res, next) {
   const connection = await pool.getConnection();
   try {
+    const errors = validateTeknisi(req.body);
+    if (errors.length) {
+      errors.forEach((message) => req.flash("error", message));
+      res.redirect("/teknisi/create");
+      return;
+    }
+
     await connection.beginTransaction();
     const credentials = await accountService.buildTechnicianAccount({
       nama: req.body.nama,
@@ -65,6 +73,13 @@ async function editForm(req, res, next) {
 
 async function update(req, res, next) {
   try {
+    const errors = validateTeknisi(req.body);
+    if (errors.length) {
+      errors.forEach((message) => req.flash("error", message));
+      res.redirect(`/teknisi/${req.params.id}/edit`);
+      return;
+    }
+
     await teknisiModel.update(req.params.id, req.body);
     req.flash("success", "Teknisi berhasil diupdate.");
     res.redirect("/teknisi");

@@ -1,5 +1,6 @@
 const userModel = require("../models/userModel");
 const { verifyPassword } = require("../services/passwordService");
+const { validateLogin } = require("../services/validationService");
 
 function showLogin(req, res) {
   if (req.session.user) {
@@ -12,6 +13,13 @@ function showLogin(req, res) {
 async function login(req, res, next) {
   try {
     const { username, password } = req.body;
+    const errors = validateLogin(req.body);
+    if (errors.length) {
+      errors.forEach((message) => req.flash("error", message));
+      res.redirect("/login");
+      return;
+    }
+
     const user = await userModel.findByUsername(username);
 
     if (!user || !verifyPassword(password, user.password)) {

@@ -1,6 +1,7 @@
 const billingModel = require("../models/billingModel");
 const tagihanModel = require("../models/tagihanModel");
 const notificationService = require("./notificationService");
+const { BILL_STATUS } = require("../constants/statuses");
 
 function getBillDay(dateValue) {
   return new Date(dateValue).getDate();
@@ -30,7 +31,7 @@ async function createBillForCustomer(customer, billDate) {
     id_paket: customer.id_paket,
     tanggal_tagihan: billDate,
     jumlah_tagihan: customer.harga,
-    status_tagihan: "BELUM BAYAR",
+    status_tagihan: BILL_STATUS.UNPAID,
   });
   await notificationService.createNotification(
     `Tagihan untuk ${customer.nama} dibuat mengikuti tanggal pemasangan ${getBillDay(
@@ -75,4 +76,9 @@ async function generateBillAfterPsbCompletion(customerId, billDate = new Date())
 module.exports = {
   generateScheduledBills,
   generateBillAfterPsbCompletion,
+  _internals: {
+    getBillDay,
+    isBillingDate,
+    createBillForCustomer,
+  },
 };

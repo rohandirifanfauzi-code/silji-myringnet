@@ -1,5 +1,6 @@
 const notifikasiModel = require("../models/notifikasiModel");
 const tugasTeknisiModel = require("../models/tugasTeknisiModel");
+const { TASK_STATUS } = require("../constants/statuses");
 
 async function index(req, res, next) {
   try {
@@ -85,7 +86,7 @@ async function scheduleTask(req, res, next) {
         detail_lokasi: item.alamat || "-",
         tipe_tugas: item.tipe === "psb" ? "psb" : "maintenance",
         tanggal_tugas: req.body.tanggal_tugas,
-        status: "DITUGASKAN",
+        status: TASK_STATUS.PENDING,
       });
     }
 

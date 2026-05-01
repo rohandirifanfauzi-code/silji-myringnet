@@ -5,15 +5,20 @@ const teknisiModel = require("../models/teknisiModel");
 const hasilPekerjaanModel = require("../models/hasilPekerjaanModel");
 const notificationService = require("../services/notificationService");
 const billingService = require("../services/billingService");
+const {
+  TASK_STATUS,
+  COMPLAINT_STATUS,
+  BILL_STATUS,
+} = require("../constants/statuses");
 
 function mapTaskStatusToComplaintStatus(status) {
-  if (status === "SELESAI") {
-    return "SELESAI";
+  if (status === TASK_STATUS.DONE) {
+    return COMPLAINT_STATUS.DONE;
   }
-  if (status === "PROSES" || status === "DITUGASKAN") {
-    return "DIPROSES";
+  if (status === TASK_STATUS.IN_PROGRESS || status === TASK_STATUS.PENDING) {
+    return COMPLAINT_STATUS.IN_PROGRESS;
   }
-  return "BARU";
+  return COMPLAINT_STATUS.NEW;
 }
 
 async function generateBillIfPsbCompleted(task, nextStatus) {
@@ -21,7 +26,7 @@ async function generateBillIfPsbCompleted(task, nextStatus) {
     return;
   }
 
-  if (task.status === "SELESAI" || nextStatus !== "SELESAI") {
+  if (task.status === TASK_STATUS.DONE || nextStatus !== TASK_STATUS.DONE) {
     return;
   }
 
@@ -124,7 +129,7 @@ async function store(req, res, next) {
       id_pelanggan: idPelanggan,
       deskripsi: req.body.deskripsi,
       tanggal: req.body.tanggal,
-      status: req.body.status || "BARU",
+      status: req.body.status || COMPLAINT_STATUS.NEW,
     });
     await notificationService.createNotification("Keluhan baru berhasil dibuat.");
     req.flash("success", "Keluhan berhasil disimpan.");
@@ -229,9 +234,9 @@ async function assignTechnician(req, res, next) {
       detail_lokasi: req.body.detail_lokasi,
       tipe_tugas: "maintenance",
       tanggal_tugas: null,
-      status: "DITUGASKAN",
+      status: TASK_STATUS.PENDING,
     });
-    await keluhanModel.update(req.body.id_keluhan, { status: "DIPROSES" });
+    await keluhanModel.update(req.body.id_keluhan, { status: COMPLAINT_STATUS.IN_PROGRESS });
     await notificationService.createNotification(
       `Keluhan #${req.body.id_keluhan} telah di-assign ke teknisi.`
     );
@@ -312,10 +317,10 @@ async function uploadResult(req, res, next) {
       foto_bukti: req.file ? req.file.filename : null,
       deskripsi: req.body.deskripsi,
     });
-    await tugasTeknisiModel.update(req.body.id_tugas, { status: "SELESAI" });
-    await generateBillIfPsbCompleted(task, "SELESAI");
+    await tugasTeknisiModel.update(req.body.id_tugas, { status: TASK_STATUS.DONE });
+    await generateBillIfPsbCompleted(task, TASK_STATUS.DONE);
     if (task.id_keluhan) {
-      await keluhanModel.update(task.id_keluhan, { status: "SELESAI" });
+      await keluhanModel.update(task.id_keluhan, { status: COMPLAINT_STATUS.DONE });
     }
     await notificationService.createNotification(
       `Hasil pekerjaan untuk tugas #${req.body.id_tugas} telah diupload.`
@@ -337,4 +342,5 @@ module.exports = {
   assignTechnician,
   updateTaskStatus,
   uploadResult,
+  mapTaskStatusToComplaintStatus,
 };

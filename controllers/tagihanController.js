@@ -2,6 +2,7 @@ const tagihanModel = require("../models/tagihanModel");
 const pelangganModel = require("../models/pelangganModel");
 const paketModel = require("../models/paketModel");
 const notificationService = require("../services/notificationService");
+const { validateTagihan } = require("../services/validationService");
 
 async function index(req, res, next) {
   try {
@@ -47,6 +48,13 @@ async function createForm(req, res, next) {
 
 async function store(req, res, next) {
   try {
+    const errors = validateTagihan(req.body);
+    if (errors.length) {
+      errors.forEach((message) => req.flash("error", message));
+      res.redirect("/tagihan/create");
+      return;
+    }
+
     const id = await tagihanModel.create({
       id_pelanggan: req.body.id_pelanggan,
       id_paket: req.body.id_paket,
@@ -84,6 +92,13 @@ async function editForm(req, res, next) {
 
 async function update(req, res, next) {
   try {
+    const errors = validateTagihan(req.body);
+    if (errors.length) {
+      errors.forEach((message) => req.flash("error", message));
+      res.redirect(`/tagihan/${req.params.id}/edit`);
+      return;
+    }
+
     await tagihanModel.update(req.params.id, {
       id_pelanggan: req.body.id_pelanggan,
       id_paket: req.body.id_paket,
