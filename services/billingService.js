@@ -57,17 +57,22 @@ async function generateScheduledBills(runDate = new Date()) {
   return generated;
 }
 
-async function generateInitialBillForCustomer(customerId) {
+async function generateBillAfterPsbCompletion(customerId, billDate = new Date()) {
+  const hasCompletedTask = await billingModel.hasCompletedPsbTask(customerId);
+  if (!hasCompletedTask) {
+    return null;
+  }
+
   const customer = await billingModel.getCustomerById(customerId);
   if (!customer) {
     return null;
   }
 
-  await createBillForCustomer(customer, customer.tanggal_daftar);
+  await createBillForCustomer(customer, billDate);
   return customer;
 }
 
 module.exports = {
   generateScheduledBills,
-  generateInitialBillForCustomer,
+  generateBillAfterPsbCompletion,
 };

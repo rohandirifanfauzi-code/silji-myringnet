@@ -4,27 +4,65 @@
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="h4 mb-0">Notifikasi</h1>
   </div>
+  <%- include('../partials/flash') %>
   <%- include('../shared/searchFilter', { action: '/notifikasi', showStatus: true, query, statusOptions: ['BELUM', 'SUDAH'] }) %>
-  <div class="card shadow-sm border-0 app-card">
-    <div class="list-group list-group-flush">
+  <% if (hasRole('teknisi')) { %>
+    <div class="row g-4">
       <% data.forEach((item) => { %>
-        <div class="list-group-item d-flex justify-content-between align-items-start gap-3">
-          <div>
-            <div class="fw-semibold"><%= item.pesan %></div>
-            <small class="text-muted"><%= new Date(item.tanggal).toLocaleString('id-ID') %></small>
-          </div>
-          <div>
-            <span class="badge <%= item.status_baca === 'SUDAH' ? 'bg-success' : 'bg-warning text-dark' %>"><%= item.status_baca %></span>
-            <% if (item.status_baca !== 'SUDAH') { %>
-              <form action="/notifikasi/<%= item.id %>/read" method="post" class="mt-2">
-                <button class="btn btn-sm btn-outline-primary">Tandai Dibaca</button>
+        <div class="col-lg-6">
+          <div class="card shadow-sm border-0 app-card h-100">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                <div>
+                  <span class="badge <%= item.tipe === 'psb' ? 'bg-primary' : 'bg-warning text-dark' %>"><%= item.tipe === 'psb' ? 'PSB' : 'Maintenance' %></span>
+                  <div class="fw-semibold mt-2"><%= item.pesan %></div>
+                </div>
+                <span class="badge <%= item.status_baca === 'SUDAH' ? 'bg-success' : 'bg-secondary' %>"><%= item.status_baca %></span>
+              </div>
+              <div class="small text-muted mb-2">Dibuat: <%= new Date(item.tanggal).toLocaleString('id-ID') %></div>
+              <div class="small mb-2"><strong>Alamat:</strong> <%= item.alamat || '-' %></div>
+              <div class="small mb-3"><strong>Tanggal disarankan:</strong> <%= item.tanggal_saran ? new Date(item.tanggal_saran).toLocaleDateString('id-ID') : 'Belum ditentukan' %></div>
+              <iframe class="map-frame mb-3" src="https://www.google.com/maps?q=<%= encodeMapQuery(item.alamat || '-') %>&output=embed" loading="lazy"></iframe>
+              <form action="/notifikasi/<%= item.id %>/schedule" method="post" class="row g-2">
+                <div class="col-sm-8">
+                  <input type="date" class="form-control" name="tanggal_tugas" value="<%= item.tanggal_saran ? new Date(item.tanggal_saran).toISOString().split('T')[0] : '' %>" required />
+                </div>
+                <div class="col-sm-4 d-grid">
+                  <button class="btn btn-primary">Atur Tanggal</button>
+                </div>
               </form>
-            <% } %>
+              <% if (item.status_baca !== 'SUDAH') { %>
+                <form action="/notifikasi/<%= item.id %>/read" method="post" class="mt-2">
+                  <button class="btn btn-sm btn-outline-secondary">Tandai Dibaca</button>
+                </form>
+              <% } %>
+            </div>
           </div>
         </div>
       <% }) %>
     </div>
-  </div>
+  <% } else { %>
+    <div class="card shadow-sm border-0 app-card">
+      <div class="list-group list-group-flush">
+        <% data.forEach((item) => { %>
+          <div class="list-group-item d-flex justify-content-between align-items-start gap-3">
+            <div>
+              <div class="fw-semibold"><%= item.pesan %></div>
+              <small class="text-muted"><%= new Date(item.tanggal).toLocaleString('id-ID') %></small>
+            </div>
+            <div>
+              <span class="badge <%= item.status_baca === 'SUDAH' ? 'bg-success' : 'bg-warning text-dark' %>"><%= item.status_baca %></span>
+              <% if (item.status_baca !== 'SUDAH') { %>
+                <form action="/notifikasi/<%= item.id %>/read" method="post" class="mt-2">
+                  <button class="btn btn-sm btn-outline-primary">Tandai Dibaca</button>
+                </form>
+              <% } %>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+  <% } %>
   <div class="mt-3"><%- include('../partials/pagination', { pagination, query }) %></div>
 </main>
 <%- include('../partials/footer') %>

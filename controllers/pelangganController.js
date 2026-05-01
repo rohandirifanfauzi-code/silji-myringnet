@@ -1,13 +1,14 @@
 const pelangganModel = require("../models/pelangganModel");
 const paketModel = require("../models/paketModel");
+const userModel = require("../models/userModel");
 const { pool } = require("../models/baseModel");
 const accountService = require("../services/accountService");
-const billingService = require("../services/billingService");
+const notificationService = require("../services/notificationService");
 
 async function index(req, res, next) {
   try {
-    if (req.session.user.role === "pelanggan") {
-      const item = await pelangganModel.getById(req.session.user.pelanggan_id);
+    if (req.user.role === "pelanggan") {
+      const item = await pelangganModel.getById(req.user.pelanggan_id);
       res.render("pelanggan/index", {
         title: "Profil Pelanggan",
         data: item ? [item] : [],
@@ -17,7 +18,7 @@ async function index(req, res, next) {
       return;
     }
 
-    if (!["admin", "manajemen"].includes(req.session.user.role)) {
+    if (req.user.role !== "admin") {
       req.flash("error", "Anda tidak memiliki akses ke halaman ini.");
       res.redirect("/dashboard");
       return;
@@ -52,13 +53,22 @@ async function store(req, res, next) {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
-    const pelangganPayload = {
+    const credentials = await accountService.buildCustomerAccount({
       nama: req.body.nama,
-      email: req.body.email,
+      no_hp: req.body.no_hp,
+    });
+    const [userResult] = await connection.query("INSERT INTO users SET ?", {
+      username: credentials.username,
+      password: credentials.password,
+      role: "pelanggan",
+    });
+    const pelangganPayload = {
+      user_id: userResult.insertId,
+      nama: req.body.nama,
       no_hp: req.body.no_hp,
       alamat: req.body.alamat,
       id_paket: req.body.id_paket,
-      tanggal_daftar: req.body.tanggal_daftar,
+      tanggal_daftar: new Date().toISOString().split("T")[0],
     };
     const [pelangganResult] = await connection.query(
       "INSERT INTO pelanggan SET ?",
@@ -68,21 +78,17 @@ async function store(req, res, next) {
       id: pelangganResult.insertId,
       ...pelangganPayload,
     };
-
-    const credentials = await accountService.buildCustomerAccount(pelanggan);
-    await connection.query("INSERT INTO users SET ?", {
-      username: credentials.username,
-      password: credentials.password,
-      role: "pelanggan",
-      nama: pelanggan.nama,
-      pelanggan_id: pelanggan.id,
-      teknisi_id: null,
-    });
     await connection.commit();
-    await billingService.generateInitialBillForCustomer(pelanggan.id);
+    await notificationService.createNotification({
+      pesan: `Pemasangan baru pelanggan ${req.body.nama}.`,
+      role_tujuan: "teknisi",
+      tipe: "psb",
+      alamat: req.body.alamat,
+      id_pelanggan: pelanggan.id,
+    });
     req.flash(
       "success",
-      `Pelanggan berhasil ditambahkan. Akun login otomatis: ${credentials.username} / ${credentials.password}`
+      `Pelanggan berhasil ditambahkan. Akun login otomatis: ${credentials.username} / ${credentials.rawPassword}`
     );
     res.redirect("/pelanggan");
   } catch (error) {
@@ -111,13 +117,13 @@ async function editForm(req, res, next) {
 
 async function update(req, res, next) {
   try {
+    const existing = await pelangganModel.getById(req.params.id);
     const pelangganPayload = {
       nama: req.body.nama,
-      email: req.body.email,
       no_hp: req.body.no_hp,
       alamat: req.body.alamat,
       id_paket: req.body.id_paket,
-      tanggal_daftar: req.body.tanggal_daftar,
+      tanggal_daftar: existing?.tanggal_daftar,
     };
     await pelangganModel.update(req.params.id, pelangganPayload);
     const synced = await accountService.syncCustomerAccount({
@@ -136,7 +142,12 @@ async function update(req, res, next) {
 
 async function destroy(req, res, next) {
   try {
-    await pelangganModel.remove(req.params.id);
+    const item = await pelangganModel.getById(req.params.id);
+    if (item?.user_id) {
+      await userModel.remove(item.user_id);
+    } else {
+      await pelangganModel.remove(req.params.id);
+    }
     req.flash("success", "Pelanggan berhasil dihapus.");
     res.redirect("/pelanggan");
   } catch (error) {

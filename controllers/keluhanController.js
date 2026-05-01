@@ -4,46 +4,81 @@ const tugasTeknisiModel = require("../models/tugasTeknisiModel");
 const teknisiModel = require("../models/teknisiModel");
 const hasilPekerjaanModel = require("../models/hasilPekerjaanModel");
 const notificationService = require("../services/notificationService");
+const billingService = require("../services/billingService");
+
+function mapTaskStatusToComplaintStatus(status) {
+  if (status === "SELESAI") {
+    return "SELESAI";
+  }
+  if (status === "PROSES" || status === "DITUGASKAN") {
+    return "DIPROSES";
+  }
+  return "BARU";
+}
+
+async function generateBillIfPsbCompleted(task, nextStatus) {
+  if (!task || task.tipe_tugas !== "psb") {
+    return;
+  }
+
+  if (task.status === "SELESAI" || nextStatus !== "SELESAI") {
+    return;
+  }
+
+  await billingService.generateBillAfterPsbCompletion(task.id_pelanggan, new Date());
+}
 
 async function index(req, res, next) {
   try {
-    if (req.session.user.role === "teknisi") {
-      const tugas = await tugasTeknisiModel.getAll({
-        ...req.query,
-        id_teknisi: req.session.user.teknisi_id,
-      });
+    if (req.user.role === "teknisi") {
+      const [tugasHariIni, tugasHistory] = await Promise.all([
+        tugasTeknisiModel.getAll({
+          ...req.query,
+          id_teknisi: req.user.teknisi_id,
+          todayOnly: true,
+        }),
+        tugasTeknisiModel.getAll({
+          page: 1,
+          limit: 10,
+          id_teknisi: req.user.teknisi_id,
+          historyOnly: true,
+        }),
+      ]);
       res.render("keluhan/index", {
         title: "Tugas Teknisi",
         data: [],
-        tugas: tugas.rows,
+        tugas: tugasHariIni.rows,
+        tugasHistory: tugasHistory.rows,
         teknisi: [],
-        pagination: tugas.pagination,
+        pagination: tugasHariIni.pagination,
         query: req.query,
       });
       return;
     }
 
     const filters =
-      req.session.user.role === "pelanggan"
-        ? { ...req.query, id_pelanggan: req.session.user.pelanggan_id }
+      req.user.role === "pelanggan"
+        ? { ...req.query, id_pelanggan: req.user.pelanggan_id }
         : req.query;
+
+    if (req.user.role === "pelanggan") {
+      res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+      res.set("Pragma", "no-cache");
+      res.set("Expires", "0");
+    }
 
     const [keluhan, teknisi, tugas] = await Promise.all([
       keluhanModel.getAll(filters),
       teknisiModel.getAll({ page: 1, limit: 100 }),
-      tugasTeknisiModel.getAll(
-        req.session.user.role === "pelanggan"
-          ? { page: 1, limit: 100 }
-          : { page: 1, limit: 100 }
-      ),
+      tugasTeknisiModel.getAll({ page: 1, limit: 100 }),
     ]);
     res.render("keluhan/index", {
       title:
-        req.session.user.role === "pelanggan"
+        req.user.role === "pelanggan"
           ? "Keluhan Saya"
           : "Keluhan & Tugas Teknisi",
       data: keluhan.rows,
-      tugas: req.session.user.role === "pelanggan" ? [] : tugas.rows,
+      tugas: req.user.role === "pelanggan" ? [] : tugas.rows,
       teknisi: teknisi.rows,
       pagination: keluhan.pagination,
       query: filters,
@@ -55,7 +90,7 @@ async function index(req, res, next) {
 
 async function createForm(req, res, next) {
   try {
-    if (req.session.user.role === "teknisi" || req.session.user.role === "manajemen") {
+    if (req.user.role === "teknisi") {
       req.flash("error", "Role Anda tidak dapat membuat keluhan.");
       res.redirect("/keluhan");
       return;
@@ -74,15 +109,15 @@ async function createForm(req, res, next) {
 
 async function store(req, res, next) {
   try {
-    if (!["admin", "pelanggan"].includes(req.session.user.role)) {
+    if (!["admin", "pelanggan"].includes(req.user.role)) {
       req.flash("error", "Role Anda tidak dapat membuat keluhan.");
       res.redirect("/keluhan");
       return;
     }
 
     const idPelanggan =
-      req.session.user.role === "pelanggan"
-        ? req.session.user.pelanggan_id
+      req.user.role === "pelanggan"
+        ? req.user.pelanggan_id
         : req.body.id_pelanggan;
 
     await keluhanModel.create({
@@ -101,7 +136,7 @@ async function store(req, res, next) {
 
 async function editForm(req, res, next) {
   try {
-    if (req.session.user.role === "teknisi" || req.session.user.role === "manajemen") {
+    if (req.user.role === "teknisi") {
       req.flash("error", "Role Anda tidak dapat mengubah keluhan.");
       res.redirect("/keluhan");
       return;
@@ -113,8 +148,8 @@ async function editForm(req, res, next) {
     ]);
 
     if (
-      req.session.user.role === "pelanggan" &&
-      Number(item?.id_pelanggan) !== Number(req.session.user.pelanggan_id)
+      req.user.role === "pelanggan" &&
+      Number(item?.id_pelanggan) !== Number(req.user.pelanggan_id)
     ) {
       req.flash("error", "Anda hanya dapat mengubah keluhan milik sendiri.");
       res.redirect("/keluhan");
@@ -141,15 +176,15 @@ async function update(req, res, next) {
     }
 
     if (
-      req.session.user.role === "pelanggan" &&
-      Number(existing.id_pelanggan) !== Number(req.session.user.pelanggan_id)
+      req.user.role === "pelanggan" &&
+      Number(existing.id_pelanggan) !== Number(req.user.pelanggan_id)
     ) {
       req.flash("error", "Anda hanya dapat mengubah keluhan milik sendiri.");
       res.redirect("/keluhan");
       return;
     }
 
-    if (req.session.user.role === "manajemen" || req.session.user.role === "teknisi") {
+    if (req.user.role === "teknisi") {
       req.flash("error", "Role Anda tidak dapat mengubah keluhan.");
       res.redirect("/keluhan");
       return;
@@ -157,12 +192,12 @@ async function update(req, res, next) {
 
     await keluhanModel.update(req.params.id, {
       id_pelanggan:
-        req.session.user.role === "pelanggan"
-          ? req.session.user.pelanggan_id
+        req.user.role === "pelanggan"
+          ? req.user.pelanggan_id
           : req.body.id_pelanggan,
       deskripsi: req.body.deskripsi,
       tanggal: req.body.tanggal,
-      status: req.session.user.role === "pelanggan" ? existing.status : req.body.status,
+      status: req.user.role === "pelanggan" ? existing.status : req.body.status,
     });
     await notificationService.createNotification(
       `Status keluhan #${req.params.id} diupdate menjadi ${req.body.status}.`
@@ -186,16 +221,29 @@ async function destroy(req, res, next) {
 
 async function assignTechnician(req, res, next) {
   try {
-    await tugasTeknisiModel.create({
+    const keluhan = await keluhanModel.getById(req.body.id_keluhan);
+    const taskId = await tugasTeknisiModel.create({
       id_keluhan: req.body.id_keluhan,
+      id_pelanggan: keluhan?.id_pelanggan || null,
       id_teknisi: req.body.id_teknisi,
       detail_lokasi: req.body.detail_lokasi,
+      tipe_tugas: "maintenance",
+      tanggal_tugas: null,
       status: "DITUGASKAN",
     });
     await keluhanModel.update(req.body.id_keluhan, { status: "DIPROSES" });
     await notificationService.createNotification(
       `Keluhan #${req.body.id_keluhan} telah di-assign ke teknisi.`
     );
+    await notificationService.createNotification({
+      pesan: `Tugas maintenance baru untuk ${keluhan?.nama_pelanggan || "pelanggan"}.`,
+      role_tujuan: "teknisi",
+      tipe: "maintenance",
+      alamat: req.body.detail_lokasi,
+      id_teknisi: req.body.id_teknisi,
+      id_pelanggan: keluhan?.id_pelanggan || null,
+      id_tugas: taskId,
+    });
     req.flash("success", "Teknisi berhasil di-assign.");
     res.redirect("/keluhan");
   } catch (error) {
@@ -213,8 +261,8 @@ async function updateTaskStatus(req, res, next) {
     }
 
     if (
-      req.session.user.role === "teknisi" &&
-      Number(task.id_teknisi) !== Number(req.session.user.teknisi_id)
+      req.user.role === "teknisi" &&
+      Number(task.id_teknisi) !== Number(req.user.teknisi_id)
     ) {
       req.flash("error", "Anda hanya dapat mengubah tugas milik sendiri.");
       res.redirect("/keluhan");
@@ -225,6 +273,12 @@ async function updateTaskStatus(req, res, next) {
       status: req.body.status,
       detail_lokasi: req.body.detail_lokasi || task.detail_lokasi,
     });
+    await generateBillIfPsbCompleted(task, req.body.status);
+    if (task.id_keluhan) {
+      await keluhanModel.update(task.id_keluhan, {
+        status: mapTaskStatusToComplaintStatus(req.body.status),
+      });
+    }
     await notificationService.createNotification(
       `Status tugas teknisi #${req.params.id} berubah menjadi ${req.body.status}.`
     );
@@ -245,8 +299,8 @@ async function uploadResult(req, res, next) {
     }
 
     if (
-      req.session.user.role === "teknisi" &&
-      Number(task.id_teknisi) !== Number(req.session.user.teknisi_id)
+      req.user.role === "teknisi" &&
+      Number(task.id_teknisi) !== Number(req.user.teknisi_id)
     ) {
       req.flash("error", "Anda hanya dapat mengunggah hasil tugas milik sendiri.");
       res.redirect("/keluhan");
@@ -259,6 +313,10 @@ async function uploadResult(req, res, next) {
       deskripsi: req.body.deskripsi,
     });
     await tugasTeknisiModel.update(req.body.id_tugas, { status: "SELESAI" });
+    await generateBillIfPsbCompleted(task, "SELESAI");
+    if (task.id_keluhan) {
+      await keluhanModel.update(task.id_keluhan, { status: "SELESAI" });
+    }
     await notificationService.createNotification(
       `Hasil pekerjaan untuk tugas #${req.body.id_tugas} telah diupload.`
     );

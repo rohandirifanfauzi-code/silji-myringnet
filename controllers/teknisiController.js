@@ -1,4 +1,7 @@
 const teknisiModel = require("../models/teknisiModel");
+const userModel = require("../models/userModel");
+const { pool } = require("../models/baseModel");
+const accountService = require("../services/accountService");
 
 async function index(req, res, next) {
   try {
@@ -19,12 +22,35 @@ function createForm(req, res) {
 }
 
 async function store(req, res, next) {
+  const connection = await pool.getConnection();
   try {
-    await teknisiModel.create(req.body);
-    req.flash("success", "Teknisi berhasil ditambahkan.");
+    await connection.beginTransaction();
+    const credentials = await accountService.buildTechnicianAccount({
+      nama: req.body.nama,
+      no_hp: req.body.no_hp,
+    });
+    const [userResult] = await connection.query("INSERT INTO users SET ?", {
+      username: credentials.username,
+      password: credentials.password,
+      role: "teknisi",
+    });
+    await connection.query("INSERT INTO teknisi SET ?", {
+      user_id: userResult.insertId,
+      nama: req.body.nama,
+      no_hp: req.body.no_hp,
+      status: req.body.status,
+    });
+    await connection.commit();
+    req.flash(
+      "success",
+      `Teknisi berhasil ditambahkan. Akun login otomatis: ${credentials.username} / ${credentials.rawPassword}`
+    );
     res.redirect("/teknisi");
   } catch (error) {
+    await connection.rollback();
     next(error);
+  } finally {
+    connection.release();
   }
 }
 
@@ -49,7 +75,12 @@ async function update(req, res, next) {
 
 async function destroy(req, res, next) {
   try {
-    await teknisiModel.remove(req.params.id);
+    const item = await teknisiModel.getById(req.params.id);
+    if (item?.user_id) {
+      await userModel.remove(item.user_id);
+    } else {
+      await teknisiModel.remove(req.params.id);
+    }
     req.flash("success", "Teknisi berhasil dihapus.");
     res.redirect("/teknisi");
   } catch (error) {

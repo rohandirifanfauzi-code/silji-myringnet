@@ -1,4 +1,5 @@
 const userModel = require("../models/userModel");
+const { hashPassword } = require("./passwordService");
 
 function slugifyUsername(value) {
   return value
@@ -27,10 +28,16 @@ function generatePassword(noHp) {
 
 async function buildCustomerAccount(pelanggan) {
   const username = await generateUniqueUsername(
-    pelanggan.email?.split("@")[0] || pelanggan.nama
+    pelanggan.nama || pelanggan.no_hp
   );
-  const password = generatePassword(pelanggan.no_hp);
-  return { username, password };
+  const rawPassword = generatePassword(pelanggan.no_hp);
+  return { username, rawPassword, password: hashPassword(rawPassword) };
+}
+
+async function buildTechnicianAccount(teknisi) {
+  const username = await generateUniqueUsername(teknisi.nama || teknisi.no_hp);
+  const rawPassword = generatePassword(teknisi.no_hp);
+  return { username, rawPassword, password: hashPassword(rawPassword) };
 }
 
 async function syncCustomerAccount(pelanggan) {
@@ -41,21 +48,15 @@ async function syncCustomerAccount(pelanggan) {
       username: credentials.username,
       password: credentials.password,
       role: "pelanggan",
-      nama: pelanggan.nama,
-      pelanggan_id: pelanggan.id,
-      teknisi_id: null,
     });
     return { userId, ...credentials };
   }
-
-  await userModel.update(existing.id, {
-    nama: pelanggan.nama,
-  });
 
   return { userId: existing.id, username: existing.username, password: existing.password };
 }
 
 module.exports = {
   buildCustomerAccount,
+  buildTechnicianAccount,
   syncCustomerAccount,
 };

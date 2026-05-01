@@ -5,7 +5,7 @@ const { ensureAuthenticated, allowRoles } = require("../middlewares/authMiddlewa
 
 const router = express.Router();
 
-router.get("/", ensureAuthenticated, allowRoles("admin", "manajemen", "pelanggan", "teknisi"), controller.index);
+router.get("/", ensureAuthenticated, allowRoles("admin", "pelanggan", "teknisi"), controller.index);
 router.get("/create", ensureAuthenticated, allowRoles("admin", "pelanggan"), controller.createForm);
 router.post("/", ensureAuthenticated, allowRoles("admin", "pelanggan"), controller.store);
 router.get("/:id/edit", ensureAuthenticated, allowRoles("admin", "pelanggan"), controller.editForm);

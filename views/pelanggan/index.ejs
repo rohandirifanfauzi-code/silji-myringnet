@@ -14,12 +14,12 @@
   <div class="card shadow-sm border-0 app-card">
     <div class="table-responsive">
       <table class="table table-hover app-table mb-0">
-        <thead class="table-light"><tr><th>Nama</th><th>Email</th><th>No HP</th><th>Paket</th><th>Tanggal Daftar</th><th><%= hasRole('admin') ? 'Aksi' : 'Info Akun' %></th></tr></thead>
+        <thead class="table-light"><tr><th>Nama</th><th>Username</th><th>No HP</th><th>Paket</th><th>Tanggal Daftar</th><th><%= hasRole('admin') ? 'Aksi' : 'Info Akun' %></th></tr></thead>
         <tbody>
           <% data.forEach((item) => { %>
             <tr>
               <td><%= item.nama %></td>
-              <td><%= item.email %></td>
+              <td><%= item.username %></td>
               <td><%= item.no_hp %></td>
               <td><%= item.nama_paket %></td>
               <td><%= new Date(item.tanggal_daftar).toLocaleDateString('id-ID') %></td>

@@ -8,6 +8,10 @@
         <div class="col-md-6"><label class="form-label">Nama</label><input class="form-control" name="nama" value="<%= item?.nama || '' %>" required /></div>
         <div class="col-md-6"><label class="form-label">No HP</label><input class="form-control" name="no_hp" value="<%= item?.no_hp || '' %>" required /></div>
         <div class="col-md-6">
+          <label class="form-label">Info Akun</label>
+          <input class="form-control" value="<%= item?.username || 'Akan dibuat otomatis setelah disimpan' %>" disabled />
+        </div>
+        <div class="col-md-6">
           <label class="form-label">Status</label>
           <select class="form-select" name="status">
             <% ['AKTIF', 'CUTI', 'NONAKTIF'].forEach((status) => { %>

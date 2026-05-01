@@ -28,9 +28,6 @@
                   <% if (hasRole('admin')) { %>
                     <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#assignModal" data-keluhan="<%= item.id %>">Assign</button>
                   <% } %>
-                  <% if (hasRole('manajemen')) { %>
-                    <span class="small text-muted">Read only</span>
-                  <% } %>
                 </td>
               </tr>
             <% }) %>
@@ -41,53 +38,131 @@
     <div class="mt-3 mb-3"><%- include('../partials/pagination', { pagination, query }) %></div>
   <% } %>
 
-  <div class="card shadow-sm border-0 app-card">
-    <div class="card-body">
-      <h2 class="h5"><%= hasRole('teknisi') ? 'Daftar Tugas Saya' : 'Daftar Tugas Teknisi' %></h2>
-      <div class="table-responsive">
-        <table class="table table-hover app-table mb-0">
-          <thead class="table-light"><tr><th>Pelanggan</th><th>Teknisi</th><th>Lokasi</th><th>Status</th><th>Update</th><th>Upload Bukti</th></tr></thead>
-          <tbody>
-            <% tugas.forEach((item) => { %>
-              <tr>
-                <td><%= item.nama_pelanggan %></td>
-                <td><%= item.nama_teknisi %></td>
-                <td><%= item.detail_lokasi %></td>
-                <td><span class="badge bg-info text-dark"><%= item.status %></span></td>
-                <td>
-                  <% if (hasRole('admin', 'teknisi')) { %>
-                    <form action="/keluhan/tugas/<%= item.id %>/status" method="post" class="d-flex gap-2">
-                      <input type="hidden" name="detail_lokasi" value="<%= item.detail_lokasi %>" />
-                      <select class="form-select form-select-sm" name="status">
-                        <% ['DITUGASKAN', 'PROSES', 'SELESAI'].forEach((status) => { %>
-                          <option value="<%= status %>" <%= item.status === status ? 'selected' : '' %>><%= status %></option>
-                        <% }) %>
-                      </select>
-                      <button class="btn btn-sm btn-outline-primary">Update</button>
-                    </form>
-                  <% } else { %>
-                    <span class="small text-muted">Dipantau oleh manajemen</span>
-                  <% } %>
-                </td>
-                <td>
-                  <% if (hasRole('admin', 'teknisi')) { %>
-                    <form action="/keluhan/hasil" method="post" enctype="multipart/form-data" class="d-flex gap-2 align-items-center">
-                      <input type="hidden" name="id_tugas" value="<%= item.id %>" />
-                      <input type="text" name="deskripsi" class="form-control form-control-sm" placeholder="Deskripsi" required />
-                      <input type="file" name="foto_bukti" class="form-control form-control-sm" accept="image/*" required />
-                      <button class="btn btn-sm btn-outline-success">Upload</button>
-                    </form>
-                  <% } else { %>
-                    <span class="small text-muted">Bukti dikelola oleh teknisi</span>
-                  <% } %>
-                </td>
-              </tr>
-            <% }) %>
-          </tbody>
-        </table>
+  <% if (hasRole('teknisi')) { %>
+    <div class="card shadow-sm border-0 app-card">
+      <div class="card-body">
+        <ul class="nav nav-tabs app-tabs mb-4" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#todayTasks" type="button" role="tab">Tugas Hari Ini</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#taskHistory" type="button" role="tab">History Tugas</button>
+          </li>
+        </ul>
+        <div class="tab-content">
+          <div class="tab-pane fade show active" id="todayTasks" role="tabpanel">
+            <div class="table-responsive">
+              <table class="table table-hover app-table mb-0">
+                <thead class="table-light"><tr><th>Pelanggan</th><th>Teknisi</th><th>Tipe</th><th>Tanggal</th><th>Lokasi</th><th>Status</th><th>Update</th><th>Upload Bukti</th></tr></thead>
+                <tbody>
+                  <% tugas.forEach((item) => { %>
+                    <tr>
+                      <td><%= item.nama_pelanggan %></td>
+                      <td><%= item.nama_teknisi %></td>
+                      <td><span class="badge <%= item.tipe_tugas === 'psb' ? 'bg-primary' : 'bg-warning text-dark' %>"><%= item.tipe_tugas === 'psb' ? 'PSB' : 'Maintenance' %></span></td>
+                      <td><%= item.tanggal_tugas ? new Date(item.tanggal_tugas).toLocaleDateString('id-ID') : '-' %></td>
+                      <td>
+                        <div><%= item.detail_lokasi %></div>
+                        <iframe class="map-frame map-frame--sm mt-2" src="https://www.google.com/maps?q=<%= encodeMapQuery(item.alamat_pelanggan || item.detail_lokasi) %>&output=embed" loading="lazy"></iframe>
+                      </td>
+                      <td><span class="badge bg-info text-dark"><%= item.status %></span></td>
+                      <td>
+                        <form action="/keluhan/tugas/<%= item.id %>/status" method="post" class="d-flex gap-2">
+                          <input type="hidden" name="detail_lokasi" value="<%= item.detail_lokasi %>" />
+                          <select class="form-select form-select-sm" name="status">
+                            <% ['DITUGASKAN', 'PROSES', 'SELESAI'].forEach((status) => { %>
+                              <option value="<%= status %>" <%= item.status === status ? 'selected' : '' %>><%= status %></option>
+                            <% }) %>
+                          </select>
+                          <button class="btn btn-sm btn-outline-primary">Update</button>
+                        </form>
+                      </td>
+                      <td>
+                        <form action="/keluhan/hasil" method="post" enctype="multipart/form-data" class="d-flex gap-2 align-items-center">
+                          <input type="hidden" name="id_tugas" value="<%= item.id %>" />
+                          <input type="text" name="deskripsi" class="form-control form-control-sm" placeholder="Deskripsi" required />
+                          <input type="file" name="foto_bukti" class="form-control form-control-sm" accept="image/*" required />
+                          <button class="btn btn-sm btn-outline-success">Upload</button>
+                        </form>
+                      </td>
+                    </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="tab-pane fade" id="taskHistory" role="tabpanel">
+            <div class="table-responsive">
+              <table class="table table-hover app-table mb-0">
+                <thead class="table-light"><tr><th>Pelanggan</th><th>Tipe</th><th>Tanggal</th><th>Lokasi</th><th>Status</th></tr></thead>
+                <tbody>
+                  <% (tugasHistory || []).forEach((item) => { %>
+                    <tr>
+                      <td><%= item.nama_pelanggan %></td>
+                      <td><span class="badge <%= item.tipe_tugas === 'psb' ? 'bg-primary' : 'bg-warning text-dark' %>"><%= item.tipe_tugas === 'psb' ? 'PSB' : 'Maintenance' %></span></td>
+                      <td><%= item.tanggal_tugas ? new Date(item.tanggal_tugas).toLocaleDateString('id-ID') : '-' %></td>
+                      <td><%= item.detail_lokasi %></td>
+                      <td><span class="badge <%= item.status === 'SELESAI' ? 'bg-success' : 'bg-secondary' %>"><%= item.status %></span></td>
+                    </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
+  <% } else { %>
+    <div class="card shadow-sm border-0 app-card">
+      <div class="card-body">
+        <h2 class="h5">Daftar Tugas Teknisi</h2>
+        <div class="table-responsive">
+          <table class="table table-hover app-table mb-0">
+            <thead class="table-light"><tr><th>Pelanggan</th><th>Teknisi</th><th>Tipe</th><th>Tanggal</th><th>Lokasi</th><th>Status</th><th>Update</th><th>Upload Bukti</th></tr></thead>
+            <tbody>
+              <% tugas.forEach((item) => { %>
+                <tr>
+                  <td><%= item.nama_pelanggan %></td>
+                  <td><%= item.nama_teknisi %></td>
+                  <td><span class="badge <%= item.tipe_tugas === 'psb' ? 'bg-primary' : 'bg-warning text-dark' %>"><%= item.tipe_tugas === 'psb' ? 'PSB' : 'Maintenance' %></span></td>
+                  <td><%= item.tanggal_tugas ? new Date(item.tanggal_tugas).toLocaleDateString('id-ID') : '-' %></td>
+                  <td><%= item.detail_lokasi %></td>
+                  <td><span class="badge bg-info text-dark"><%= item.status %></span></td>
+                  <td>
+                    <% if (hasRole('admin', 'teknisi')) { %>
+                      <form action="/keluhan/tugas/<%= item.id %>/status" method="post" class="d-flex gap-2">
+                        <input type="hidden" name="detail_lokasi" value="<%= item.detail_lokasi %>" />
+                        <select class="form-select form-select-sm" name="status">
+                          <% ['DITUGASKAN', 'PROSES', 'SELESAI'].forEach((status) => { %>
+                            <option value="<%= status %>" <%= item.status === status ? 'selected' : '' %>><%= status %></option>
+                          <% }) %>
+                        </select>
+                        <button class="btn btn-sm btn-outline-primary">Update</button>
+                      </form>
+                    <% } else { %>
+                      <span class="small text-muted">Mode baca saja</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (hasRole('admin', 'teknisi')) { %>
+                      <form action="/keluhan/hasil" method="post" enctype="multipart/form-data" class="d-flex gap-2 align-items-center">
+                        <input type="hidden" name="id_tugas" value="<%= item.id %>" />
+                        <input type="text" name="deskripsi" class="form-control form-control-sm" placeholder="Deskripsi" required />
+                        <input type="file" name="foto_bukti" class="form-control form-control-sm" accept="image/*" required />
+                        <button class="btn btn-sm btn-outline-success">Upload</button>
+                      </form>
+                    <% } else { %>
+                      <span class="small text-muted">Bukti dikelola oleh teknisi</span>
+                    <% } %>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  <% } %>
 </main>
 
 <% if (hasRole('admin')) { %>

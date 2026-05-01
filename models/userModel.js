@@ -2,10 +2,24 @@ const { pool } = require("./baseModel");
 
 async function findByUsername(username) {
   const [rows] = await pool.query(
-    `SELECT users.*, pelanggan.nama AS nama_pelanggan, teknisi.nama AS nama_teknisi
+    `SELECT users.*,
+            admin.id AS admin_id,
+            admin.nama AS nama_admin,
+            admin.email AS email_admin,
+            teknisi.id AS teknisi_id,
+            teknisi.nama AS nama_teknisi,
+            teknisi.no_hp AS no_hp_teknisi,
+            teknisi.status AS status_teknisi,
+            pelanggan.id AS pelanggan_id,
+            pelanggan.nama AS nama_pelanggan,
+            pelanggan.alamat AS alamat_pelanggan,
+            pelanggan.no_hp AS no_hp_pelanggan,
+            pelanggan.id_paket AS paket_pelanggan,
+            pelanggan.tanggal_daftar AS tanggal_daftar_pelanggan
      FROM users
-     LEFT JOIN pelanggan ON pelanggan.id = users.pelanggan_id
-     LEFT JOIN teknisi ON teknisi.id = users.teknisi_id
+     LEFT JOIN admin ON admin.user_id = users.id
+     LEFT JOIN teknisi ON teknisi.user_id = users.id
+     LEFT JOIN pelanggan ON pelanggan.user_id = users.id
      WHERE users.username = ?
      LIMIT 1`,
     [username]
@@ -15,7 +29,11 @@ async function findByUsername(username) {
 
 async function findByPelangganId(pelangganId) {
   const [rows] = await pool.query(
-    "SELECT * FROM users WHERE pelanggan_id = ? LIMIT 1",
+    `SELECT users.*
+     FROM users
+     INNER JOIN pelanggan ON pelanggan.user_id = users.id
+     WHERE pelanggan.id = ?
+     LIMIT 1`,
     [pelangganId]
   );
   return rows[0] || null;
@@ -23,7 +41,11 @@ async function findByPelangganId(pelangganId) {
 
 async function findByTeknisiId(teknisiId) {
   const [rows] = await pool.query(
-    "SELECT * FROM users WHERE teknisi_id = ? LIMIT 1",
+    `SELECT users.*
+     FROM users
+     INNER JOIN teknisi ON teknisi.user_id = users.id
+     WHERE teknisi.id = ?
+     LIMIT 1`,
     [teknisiId]
   );
   return rows[0] || null;
@@ -39,10 +61,16 @@ async function update(id, data) {
   return result.affectedRows;
 }
 
+async function remove(id) {
+  const [result] = await pool.query("DELETE FROM users WHERE id = ?", [id]);
+  return result.affectedRows;
+}
+
 module.exports = {
   findByUsername,
   findByPelangganId,
   findByTeknisiId,
   create,
   update,
+  remove,
 };

@@ -1,8 +1,20 @@
 const notifikasiModel = require("../models/notifikasiModel");
 
-async function createNotification(pesan) {
+async function createNotification(payload) {
+  const data =
+    typeof payload === "string"
+      ? { pesan: payload }
+      : payload;
+
   await notifikasiModel.create({
-    pesan,
+    role_tujuan: "admin",
+    tipe: "general",
+    alamat: null,
+    tanggal_saran: null,
+    id_teknisi: null,
+    id_pelanggan: null,
+    id_tugas: null,
+    ...data,
     tanggal: new Date(),
     status_baca: "BELUM",
   });

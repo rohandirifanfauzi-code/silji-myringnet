@@ -83,4 +83,22 @@ async function getTechnicianSummary(teknisiId) {
   };
 }
 
-module.exports = { getSummary, getCustomerSummary, getTechnicianSummary };
+async function getRecentInstallationRequests(limit = 5) {
+  const [rows] = await pool.query(
+    `SELECT pelanggan.id, pelanggan.nama, pelanggan.alamat, pelanggan.no_hp, pelanggan.tanggal_daftar,
+            paket.nama_paket
+     FROM pelanggan
+     LEFT JOIN paket ON paket.id = pelanggan.id_paket
+     ORDER BY pelanggan.tanggal_daftar DESC, pelanggan.id DESC
+     LIMIT ?`,
+    [limit]
+  );
+  return rows;
+}
+
+module.exports = {
+  getSummary,
+  getCustomerSummary,
+  getTechnicianSummary,
+  getRecentInstallationRequests,
+};

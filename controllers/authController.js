@@ -1,4 +1,5 @@
 const userModel = require("../models/userModel");
+const { verifyPassword } = require("../services/passwordService");
 
 function showLogin(req, res) {
   if (req.session.user) {
@@ -13,19 +14,40 @@ async function login(req, res, next) {
     const { username, password } = req.body;
     const user = await userModel.findByUsername(username);
 
-    if (!user || user.password !== password) {
+    if (!user || !verifyPassword(password, user.password)) {
       req.flash("error", "Username atau password salah.");
       res.redirect("/login");
       return;
     }
 
+    const roleProfile =
+      user.role === "admin"
+        ? {
+            admin_id: user.admin_id,
+            nama: user.nama_admin,
+            email: user.email_admin,
+          }
+        : user.role === "teknisi"
+          ? {
+              teknisi_id: user.teknisi_id,
+              nama: user.nama_teknisi,
+              no_hp: user.no_hp_teknisi,
+              status: user.status_teknisi,
+            }
+          : {
+              pelanggan_id: user.pelanggan_id,
+              nama: user.nama_pelanggan,
+              alamat: user.alamat_pelanggan,
+              no_hp: user.no_hp_pelanggan,
+              id_paket: user.paket_pelanggan,
+              tanggal_daftar: user.tanggal_daftar_pelanggan,
+            };
+
     req.session.user = {
       id: user.id,
       username: user.username,
       role: user.role,
-      pelanggan_id: user.pelanggan_id,
-      teknisi_id: user.teknisi_id,
-      nama: user.nama || user.nama_pelanggan || user.nama_teknisi || user.username,
+      ...roleProfile,
     };
 
     res.redirect("/dashboard");

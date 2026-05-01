@@ -1,41 +1,54 @@
 const dashboardModel = require("../models/dashboardModel");
 const notifikasiModel = require("../models/notifikasiModel");
+const tugasTeknisiModel = require("../models/tugasTeknisiModel");
+const tagihanModel = require("../models/tagihanModel");
 
 async function index(req, res, next) {
   try {
-    let summary;
-    let metricLabels = {
-      totalPelanggan: "Total Pelanggan",
-      totalTagihan: "Total Tagihan",
-      totalPembayaran: "Total Pembayaran",
-      totalKeluhan: "Total Keluhan",
-    };
-    if (req.session.user.role === "pelanggan") {
-      summary = await dashboardModel.getCustomerSummary(req.session.user.pelanggan_id);
-      metricLabels = {
-        totalPelanggan: "Profil Aktif",
-        totalTagihan: "Total Tagihan",
-        totalPembayaran: "Riwayat Bayar",
-        totalKeluhan: "Keluhan Saya",
-      };
-    } else if (req.session.user.role === "teknisi") {
-      summary = await dashboardModel.getTechnicianSummary(req.session.user.teknisi_id);
-      metricLabels = {
-        totalPelanggan: "Total Tugas",
-        totalTagihan: "Sedang Proses",
-        totalPembayaran: "Tugas Selesai",
-        totalKeluhan: "Keluhan Aktif",
-      };
-    } else {
-      summary = await dashboardModel.getSummary();
+    let summary = null;
+    let notifications = [];
+    let todayTasks = [];
+    let taskHistory = [];
+    let customerBills = [];
+
+    if (req.user.role === "admin") {
+      notifications = await notifikasiModel.getLatest(5);
+    } else if (req.user.role === "pelanggan") {
+      summary = await dashboardModel.getCustomerSummary(req.user.pelanggan_id);
+      customerBills = (
+        await tagihanModel.getAll({
+          page: 1,
+          limit: 5,
+          id_pelanggan: req.user.pelanggan_id,
+        })
+      ).rows;
+      res.render("dashboard/index", {
+        title: "Dashboard",
+        summary,
+        notifications,
+        todayTasks,
+        taskHistory,
+        customerBills,
+      });
+      return;
+    } else if (req.user.role === "teknisi") {
+      todayTasks = await tugasTeknisiModel.getTodayByTechnician(
+        req.user.teknisi_id,
+        6
+      );
+      taskHistory = await tugasTeknisiModel.getHistoryByTechnician(
+        req.user.teknisi_id,
+        6
+      );
     }
 
-    const notifications = await notifikasiModel.getAll({ page: 1, limit: 5 });
     res.render("dashboard/index", {
       title: "Dashboard",
       summary,
-      metricLabels,
-      notifications: notifications.rows,
+      notifications,
+      todayTasks,
+      taskHistory,
+      customerBills,
     });
   } catch (error) {
     next(error);

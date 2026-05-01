@@ -6,7 +6,6 @@
       <h1 class="h4 mb-4"><%= item ? 'Edit' : 'Tambah' %> Pelanggan</h1>
       <form method="post" action="<%= item ? `/pelanggan/${item.id}?_method=PUT` : '/pelanggan' %>" class="row g-3">
         <div class="col-md-6"><label class="form-label">Nama</label><input class="form-control" name="nama" value="<%= item?.nama || '' %>" required /></div>
-        <div class="col-md-6"><label class="form-label">Email</label><input type="email" class="form-control" name="email" value="<%= item?.email || '' %>" required /></div>
         <div class="col-md-6"><label class="form-label">No HP</label><input class="form-control" name="no_hp" value="<%= item?.no_hp || '' %>" required /></div>
         <div class="col-md-6">
           <label class="form-label">Paket</label>
@@ -18,7 +17,10 @@
           </select>
         </div>
         <div class="col-12"><label class="form-label">Alamat</label><textarea class="form-control" name="alamat" rows="3" required><%= item?.alamat || '' %></textarea></div>
-        <div class="col-md-6"><label class="form-label">Tanggal Daftar</label><input type="date" class="form-control" name="tanggal_daftar" value="<%= item ? new Date(item.tanggal_daftar).toISOString().split('T')[0] : '' %>" required /></div>
+        <div class="col-md-6">
+          <label class="form-label">Info Akun</label>
+          <input class="form-control" value="<%= item?.username || 'Akan dibuat otomatis setelah disimpan' %>" disabled />
+        </div>
         <div class="col-12 d-flex gap-2">
           <button class="btn btn-primary">Simpan</button>
           <a href="/pelanggan" class="btn btn-secondary">Kembali</a>

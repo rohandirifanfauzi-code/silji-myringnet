@@ -37,7 +37,7 @@ module.exports = {
       joins:
         "LEFT JOIN pelanggan ON pelanggan.id = tagihan.id_pelanggan LEFT JOIN paket ON paket.id = tagihan.id_paket",
       select:
-        "tagihan.*, pelanggan.nama AS nama_pelanggan, pelanggan.email, paket.nama_paket, paket.harga",
+        "tagihan.*, pelanggan.nama AS nama_pelanggan, paket.nama_paket, paket.harga",
     }),
   create: (data) => baseModel.create("tagihan", data),
   update: (id, data) => baseModel.update("tagihan", id, data),
