@@ -1,0 +1,121 @@
+<%- include('../partials/header') %>
+<%- include('../partials/navbar') %>
+<main class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <span class="section-heading__eyebrow">Manajemen</span>
+      <h1 class="h4 mb-0">Dashboard Analytics</h1>
+    </div>
+    <a href="/laporan" class="btn btn-primary">Lihat Laporan</a>
+  </div>
+  <div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="stat-card stat-card--cyan"><span>Total Pelanggan</span><strong><%= summary.totalPelanggan %></strong><small>Akun pelanggan aktif</small></div></div>
+    <div class="col-md-3"><div class="stat-card stat-card--gold"><span>Total Tagihan</span><strong><%= summary.totalTagihan %></strong><small>Semua tagihan</small></div></div>
+    <div class="col-md-3"><div class="stat-card stat-card--green"><span>Total Pemasukan</span><strong>Rp <%= Number(summary.totalPembayaran).toLocaleString('id-ID') %></strong><small>Pembayaran paid</small></div></div>
+    <div class="col-md-3"><div class="stat-card stat-card--coral"><span>Total Keluhan</span><strong><%= summary.totalKeluhan %></strong><small>Ticket pelanggan</small></div></div>
+  </div>
+  <div class="card shadow-sm border-0 app-card">
+    <div class="card-body">
+      <div class="section-heading mb-3">
+        <span class="section-heading__eyebrow">Laporan Bulanan</span>
+        <h2 class="h5 mb-0">Pemasukan, Pelanggan Baru, dan Keluhan</h2>
+      </div>
+      <div class="chart-panel">
+        <canvas id="chartBulanan"></canvas>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="/vendor/chart.js/chart.umd.min.js"></script>
+<script>
+  const monthlyAnalytics = <%- JSON.stringify(monthly) %>;
+  const chartBulanan = document.getElementById("chartBulanan");
+
+  if (chartBulanan) {
+    new Chart(chartBulanan, {
+      type: "line",
+      data: {
+        labels: monthlyAnalytics.labels,
+        datasets: [
+          {
+            label: "Pemasukan Bulanan",
+            data: monthlyAnalytics.pemasukan,
+            borderColor: "#0f766e",
+            backgroundColor: "rgba(15, 118, 110, 0.14)",
+            borderWidth: 3,
+            tension: 0.35,
+            fill: true,
+            yAxisID: "y",
+          },
+          {
+            label: "Pelanggan Baru",
+            data: monthlyAnalytics.pelangganBaru,
+            borderColor: "#2563eb",
+            backgroundColor: "rgba(37, 99, 235, 0.12)",
+            borderWidth: 2,
+            tension: 0.35,
+            yAxisID: "y1",
+          },
+          {
+            label: "Keluhan",
+            data: monthlyAnalytics.keluhan,
+            borderColor: "#dc2626",
+            backgroundColor: "rgba(220, 38, 38, 0.12)",
+            borderWidth: 2,
+            tension: 0.35,
+            yAxisID: "y1",
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: "index",
+          intersect: false,
+        },
+        plugins: {
+          legend: {
+            position: "bottom",
+            labels: {
+              boxWidth: 12,
+              usePointStyle: true,
+            },
+          },
+          tooltip: {
+            callbacks: {
+              label(context) {
+                const value = Number(context.parsed.y || 0);
+                if (context.dataset.yAxisID === "y") {
+                  return `${context.dataset.label}: Rp ${value.toLocaleString("id-ID")}`;
+                }
+                return `${context.dataset.label}: ${value.toLocaleString("id-ID")}`;
+              },
+            },
+          },
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback(value) {
+                return `Rp ${Number(value).toLocaleString("id-ID")}`;
+              },
+            },
+          },
+          y1: {
+            beginAtZero: true,
+            position: "right",
+            grid: {
+              drawOnChartArea: false,
+            },
+            ticks: {
+              precision: 0,
+            },
+          },
+        },
+      },
+    });
+  }
+</script>
+<%- include('../partials/footer') %>

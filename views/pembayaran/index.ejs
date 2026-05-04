@@ -8,16 +8,35 @@
         <div class="card shadow-sm border-0 app-card">
           <div class="card-body">
             <h1 class="h4 mb-3"><%= hasRole('pelanggan') ? 'Bayar Tagihan Saya' : 'Input Pembayaran' %></h1>
-            <form method="post" action="/pembayaran/prepare" class="vstack gap-3 payment-method-form">
-              <div>
-                <label class="form-label">Tagihan</label>
-                <select class="form-select" name="id_tagihan" id="paymentBillSelect" required>
-                  <option value="">Pilih tagihan</option>
-                  <% tagihan.forEach((item) => { %>
-                    <option value="<%= item.id %>" data-amount="<%= Number(item.jumlah_tagihan) %>"><%= item.nama_pelanggan %> - Rp <%= Number(item.jumlah_tagihan).toLocaleString('id-ID') %></option>
-                  <% }) %>
-                </select>
+            <% if (hasRole('pelanggan') && activeBill) { %>
+              <div class="payment-detail-box mb-3">
+                <span>Tagihan Aktif</span>
+                <strong>Rp <%= Number(activeBill.jumlah_tagihan).toLocaleString('id-ID') %></strong>
+                <small><%= activeBill.nama_paket %> - <%= activeBill.status_tagihan %></small>
               </div>
+            <% } %>
+            <% if (hasRole('pelanggan') && !activeBill) { %>
+              <div class="payment-detail-box">
+                <span>Status Tagihan</span>
+                <strong>Tidak ada tagihan aktif.</strong>
+                <small>Tagihan akan muncul otomatis dari sistem billing.</small>
+              </div>
+            <% } else { %>
+              <form method="post" action="/pembayaran/prepare" class="vstack gap-3 payment-method-form">
+                <%- include('../partials/csrf') %>
+                <% if (hasRole('admin')) { %>
+                  <div>
+                    <label class="form-label">Tagihan</label>
+                    <select class="form-select" name="id_tagihan" id="paymentBillSelect" required>
+                      <option value="">Pilih tagihan</option>
+                      <% tagihan.forEach((item) => { %>
+                        <option value="<%= item.id %>" data-amount="<%= Number(item.jumlah_tagihan) %>"><%= item.nama_pelanggan %> - Rp <%= Number(item.jumlah_tagihan).toLocaleString('id-ID') %></option>
+                      <% }) %>
+                    </select>
+                  </div>
+                <% } else { %>
+                  <input type="hidden" name="id_tagihan" value="<%= activeBill.id %>" />
+                <% } %>
               <div>
                 <label class="form-label">Metode Pembayaran</label>
                 <select class="form-select" name="metode" id="paymentMethodSelect" required>
@@ -29,6 +48,7 @@
               </div>
               <button class="btn btn-primary">Lanjutkan</button>
             </form>
+            <% } %>
           </div>
         </div>
       </div>
@@ -45,10 +65,20 @@
               <img src="<%= paymentDraft.qrCode %>" alt="QRIS" class="payment-qr-image" />
               <h3 class="h6 mt-3 mb-1">Scan QRIS untuk simulasi pembayaran</h3>
               <p class="text-muted mb-3"><%= paymentDraft.pelanggan %> • Rp <%= Number(paymentDraft.jumlah).toLocaleString('id-ID') %></p>
+              <div class="payment-detail-box w-100 text-start">
+                <span>Payment Reference</span>
+                <strong><%= paymentDraft.paymentReference %></strong>
+              </div>
               <form method="post" action="/pembayaran" class="w-100">
+                <%- include('../partials/csrf') %>
                 <input type="hidden" name="payment_id" value="<%= paymentDraft.paymentId %>" />
                 <input type="hidden" name="metode" value="qris" />
                 <button class="btn btn-primary w-100">Simulasikan Pembayaran QRIS Berhasil</button>
+              </form>
+              <form method="post" action="/payment/callback" class="w-100">
+                <input type="hidden" name="payment_reference" value="<%= paymentDraft.paymentReference %>" />
+                <input type="hidden" name="status" value="paid" />
+                <button class="btn btn-outline-primary w-100">Simulasikan Callback Gateway</button>
               </form>
             </div>
           <% } else if (paymentDraft?.metode === 'va') { %>
@@ -58,19 +88,30 @@
                 <strong><%= paymentDraft.vaNumber %></strong>
               </div>
               <div class="payment-detail-box">
+                <span>Payment Reference</span>
+                <strong><%= paymentDraft.paymentReference %></strong>
+              </div>
+              <div class="payment-detail-box">
                 <span>Nominal</span>
                 <strong>Rp <%= Number(paymentDraft.jumlah).toLocaleString('id-ID') %></strong>
               </div>
               <p class="text-muted mb-3">Silakan transfer ke nomor VA di atas. Setelah itu klik tombol konfirmasi simulasi pembayaran.</p>
               <form method="post" action="/pembayaran">
+                <%- include('../partials/csrf') %>
                 <input type="hidden" name="payment_id" value="<%= paymentDraft.paymentId %>" />
                 <input type="hidden" name="metode" value="va" />
                 <button class="btn btn-primary w-100">Konfirmasi Pembayaran VA</button>
               </form>
+              <form method="post" action="/payment/callback" class="mt-2">
+                <input type="hidden" name="payment_reference" value="<%= paymentDraft.paymentReference %>" />
+                <input type="hidden" name="status" value="paid" />
+                <button class="btn btn-outline-primary w-100">Simulasikan Callback Gateway</button>
+              </form>
             </div>
-          <% } else if (query.metode === 'cash' && query.id_tagihan) { %>
+          <% } else if (hasRole('admin') && query.metode === 'cash' && query.id_tagihan) { %>
             <div class="payment-output">
               <form method="post" action="/pembayaran" class="vstack gap-3">
+                <%- include('../partials/csrf') %>
                 <input type="hidden" name="id_tagihan" value="<%= query.id_tagihan %>" />
                 <input type="hidden" name="metode" value="cash" />
                 <div>
@@ -87,8 +128,8 @@
           <% } else { %>
             <div class="payment-output payment-output--empty">
               <div class="payment-placeholder-icon">Rp</div>
-              <h3 class="h6">Pilih tagihan dan metode pembayaran</h3>
-              <p class="text-muted mb-0">QRIS akan menampilkan QR code, Virtual Account akan membuat nomor VA simulasi, dan Cash akan menampilkan form pembayaran manual.</p>
+              <h3 class="h6"><%= hasRole('pelanggan') ? 'Pilih metode pembayaran' : 'Pilih tagihan dan metode pembayaran' %></h3>
+              <p class="text-muted mb-0">QRIS akan menampilkan QR code, Virtual Account akan membuat nomor VA simulasi, dan Cash akan mencatat pembayaran sesuai tagihan aktif.</p>
             </div>
           <% } %>
         </div>
@@ -110,10 +151,11 @@
                   <td><%= item.va_number || '-' %></td>
                   <td>Rp <%= Number(item.jumlah_bayar).toLocaleString('id-ID') %></td>
                   <td><span class="badge <%= item.status === 'paid' ? 'bg-success' : 'bg-warning text-dark' %>"><%= item.status %></span></td>
-                  <td><span class="badge <%= item.status_tagihan === 'LUNAS' ? 'bg-success' : 'bg-warning text-dark' %>"><%= item.status_tagihan %></span></td>
+                  <td><span class="badge <%= item.status_tagihan === 'lunas' ? 'bg-success' : 'bg-warning text-dark' %>"><%= item.status_tagihan %></span></td>
                   <td>
                     <% if (hasRole('admin')) { %>
                       <form action="/pembayaran/<%= item.id %>/delete" method="post">
+                        <%- include('../partials/csrf') %>
                         <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Hapus pembayaran?')">Hapus</button>
                       </form>
                     <% } else { %>

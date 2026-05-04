@@ -73,8 +73,11 @@ async function store(req, res, next) {
     const pelangganPayload = {
       user_id: userResult.insertId,
       nama: req.body.nama,
+      email: req.body.email || null,
       no_hp: req.body.no_hp,
       alamat: req.body.alamat,
+      latitude: req.body.latitude || null,
+      longitude: req.body.longitude || null,
       id_paket: req.body.id_paket,
       tanggal_daftar: new Date().toISOString().split("T")[0],
     };
@@ -135,8 +138,11 @@ async function update(req, res, next) {
     const existing = await pelangganModel.getById(req.params.id);
     const pelangganPayload = {
       nama: req.body.nama,
+      email: req.body.email || null,
       no_hp: req.body.no_hp,
       alamat: req.body.alamat,
+      latitude: req.body.latitude || null,
+      longitude: req.body.longitude || null,
       id_paket: req.body.id_paket,
       tanggal_daftar: existing?.tanggal_daftar,
     };

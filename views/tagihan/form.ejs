@@ -5,6 +5,7 @@
     <div class="card-body">
       <h1 class="h4 mb-4"><%= item ? 'Edit' : 'Tambah' %> Tagihan</h1>
       <form method="post" action="<%= item ? `/tagihan/${item.id}?_method=PUT` : '/tagihan' %>" class="row g-3">
+        <%- include('../partials/csrf') %>
         <div class="col-md-6">
           <label class="form-label">Pelanggan</label>
           <select class="form-select" name="id_pelanggan" required>
@@ -28,7 +29,7 @@
         <div class="col-md-4">
           <label class="form-label">Status</label>
           <select class="form-select" name="status_tagihan" required>
-            <% ['BELUM BAYAR', 'LUNAS'].forEach((status) => { %>
+            <% ['belum_bayar', 'lunas'].forEach((status) => { %>
               <option value="<%= status %>" <%= item?.status_tagihan === status ? 'selected' : '' %>><%= status %></option>
             <% }) %>
           </select>

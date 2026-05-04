@@ -23,7 +23,8 @@ async function getAll(params = {}) {
     select: baseSelect,
     searchableFields: ["notifikasi.pesan", "notifikasi.alamat", "pelanggan.nama"],
     filters: {
-      "notifikasi.status_baca": params.status,
+      "notifikasi.status_notifikasi": params.status_notifikasi || params.status,
+      "notifikasi.status_baca": params.status_baca,
       "notifikasi.role_tujuan": params.role_tujuan,
       "notifikasi.tipe": params.tipe,
     },
@@ -57,9 +58,14 @@ async function getForTechnician(teknisiId, params = {}) {
   ];
   const values = [teknisiId];
 
-  if (params.status) {
+  if (params.status_notifikasi || params.status) {
+    conditions.push("notifikasi.status_notifikasi = ?");
+    values.push(params.status_notifikasi || params.status);
+  }
+
+  if (params.status_baca) {
     conditions.push("notifikasi.status_baca = ?");
-    values.push(params.status);
+    values.push(params.status_baca);
   }
 
   if (params.search) {
@@ -110,4 +116,11 @@ module.exports = {
     }),
   create: (data) => baseModel.create("notifikasi", data),
   update: (id, data) => baseModel.update("notifikasi", id, data),
+  updateByTaskId: async (idTugas, data) => {
+    const [result] = await pool.query("UPDATE notifikasi SET ? WHERE id_tugas = ?", [
+      data,
+      idTugas,
+    ]);
+    return result.affectedRows;
+  },
 };

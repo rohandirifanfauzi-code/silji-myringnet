@@ -30,6 +30,11 @@ function buildConditions(params = {}) {
     values.push(params.id_teknisi);
   }
 
+  if (params.id_pelanggan) {
+    conditions.push("COALESCE(keluhan.id_pelanggan, tugas_teknisi.id_pelanggan) = ?");
+    values.push(params.id_pelanggan);
+  }
+
   if (params.tipe_tugas) {
     conditions.push("tugas_teknisi.tipe_tugas = ?");
     values.push(params.tipe_tugas);
@@ -74,7 +79,7 @@ async function getAll(params = {}) {
      FROM tugas_teknisi
      ${baseJoins}
      ${whereClause}
-     ORDER BY COALESCE(tugas_teknisi.tanggal_tugas, '9999-12-31') ASC, tugas_teknisi.id DESC
+     ORDER BY COALESCE(tugas_teknisi.tanggal_tugas, '1000-01-01') DESC, tugas_teknisi.id DESC
      LIMIT ? OFFSET ?`,
     [...values, limit, offset]
   );
@@ -104,7 +109,7 @@ async function getTodayByTechnician(teknisiId, limit = 10) {
      FROM tugas_teknisi
      ${baseJoins}
      WHERE tugas_teknisi.id_teknisi = ? AND tugas_teknisi.tanggal_tugas = CURDATE()
-     ORDER BY tugas_teknisi.status = 'SELESAI', tugas_teknisi.id DESC
+     ORDER BY tugas_teknisi.status = 'selesai', tugas_teknisi.id DESC
      LIMIT ?`,
     [teknisiId, limit]
   );

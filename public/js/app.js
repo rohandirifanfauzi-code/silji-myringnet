@@ -1,4 +1,18 @@
 document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("form").forEach((form) => {
+    form.addEventListener("submit", (event) => {
+      if (form.dataset.submitting === "true") {
+        event.preventDefault();
+        return;
+      }
+
+      form.dataset.submitting = "true";
+      form.querySelectorAll("button[type='submit'], button:not([type])").forEach((button) => {
+        button.disabled = true;
+      });
+    });
+  });
+
   const assignModal = document.getElementById("assignModal");
   if (assignModal) {
     assignModal.addEventListener("show.bs.modal", (event) => {

@@ -10,6 +10,7 @@
       </div>
       <%- include('../partials/flash') %>
       <form action="/login" method="post" class="vstack gap-3">
+        <%- include('../partials/csrf') %>
         <div>
           <label class="form-label">Username</label>
           <input type="text" name="username" class="form-control" required />

@@ -20,12 +20,26 @@ function getAll(params) {
   });
 }
 
-async function findMonthlyBillByCustomerAndPackage(idPelanggan, idPaket, periodDate) {
-  const [rows] = await pool.query(
+async function findMonthlyBillByCustomerAndPackage(idPelanggan, idPaket, periodDate, connection = pool) {
+  const [rows] = await connection.query(
     `SELECT * FROM tagihan
      WHERE id_pelanggan = ? AND id_paket = ? AND DATE_FORMAT(tanggal_tagihan, '%Y-%m') = DATE_FORMAT(?, '%Y-%m')
      LIMIT 1`,
     [idPelanggan, idPaket, periodDate]
+  );
+  return rows[0] || null;
+}
+
+async function findActiveByCustomer(idPelanggan) {
+  const [rows] = await pool.query(
+    `SELECT tagihan.*, pelanggan.nama AS nama_pelanggan, paket.nama_paket, paket.harga
+     FROM tagihan
+     LEFT JOIN pelanggan ON pelanggan.id = tagihan.id_pelanggan
+     LEFT JOIN paket ON paket.id = tagihan.id_paket
+     WHERE tagihan.id_pelanggan = ? AND tagihan.status_tagihan = 'belum_bayar'
+     ORDER BY tagihan.tanggal_tagihan DESC, tagihan.id DESC
+     LIMIT 1`,
+    [idPelanggan]
   );
   return rows[0] || null;
 }
@@ -39,8 +53,12 @@ module.exports = {
       select:
         "tagihan.*, pelanggan.nama AS nama_pelanggan, paket.nama_paket, paket.harga",
     }),
-  create: (data) => baseModel.create("tagihan", data),
+  create: async (data, connection = pool) => {
+    const [result] = await connection.query("INSERT INTO tagihan SET ?", data);
+    return result.insertId;
+  },
   update: (id, data) => baseModel.update("tagihan", id, data),
   remove: (id) => baseModel.remove("tagihan", id),
   findMonthlyBillByCustomerAndPackage,
+  findActiveByCustomer,
 };

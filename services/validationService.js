@@ -18,6 +18,13 @@ function isValidDateInput(value) {
   return !Number.isNaN(new Date(value).getTime());
 }
 
+function isValidEmail(value) {
+  if (isBlank(value)) {
+    return true;
+  }
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim());
+}
+
 function collectErrors(rules) {
   return rules.filter(Boolean);
 }
@@ -32,6 +39,7 @@ function validateLogin(payload = {}) {
 function validatePelanggan(payload = {}) {
   return collectErrors([
     isBlank(payload.nama) && "Nama pelanggan wajib diisi.",
+    !isValidEmail(payload.email) && "Email pelanggan tidak valid.",
     !isValidPhone(payload.no_hp) && "Nomor HP pelanggan tidak valid.",
     isBlank(payload.alamat) && "Alamat pelanggan wajib diisi.",
     isBlank(payload.id_paket) && "Paket pelanggan wajib dipilih.",
@@ -58,7 +66,6 @@ function validateAssignTeknisi(payload = {}) {
   return collectErrors([
     isBlank(payload.id_keluhan) && "Keluhan yang akan di-assign wajib dipilih.",
     isBlank(payload.id_teknisi) && "Teknisi wajib dipilih.",
-    isBlank(payload.detail_lokasi) && "Detail lokasi wajib diisi.",
   ]);
 }
 
@@ -75,14 +82,13 @@ function validateTagihan(payload = {}) {
     isBlank(payload.id_paket) && "Paket wajib dipilih.",
     !isValidDateInput(payload.tanggal_tagihan) && "Tanggal tagihan tidak valid.",
     !isPositiveNumber(payload.jumlah_tagihan) && "Jumlah tagihan harus lebih dari 0.",
-    !["BELUM BAYAR", "LUNAS"].includes(String(payload.status_tagihan || "")) &&
+    !["belum_bayar", "lunas"].includes(String(payload.status_tagihan || "")) &&
       "Status tagihan tidak valid.",
   ]);
 }
 
 function validatePaymentPreparation(payload = {}) {
   return collectErrors([
-    isBlank(payload.id_tagihan) && "Tagihan wajib dipilih.",
     !["qris", "va", "cash"].includes(String(payload.metode || "").toLowerCase()) &&
       "Metode pembayaran tidak valid.",
   ]);

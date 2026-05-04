@@ -17,6 +17,7 @@ async function findAll({
   orderBy = "id DESC",
   joins = "",
   select = "*",
+  extraConditions = [],
 }) {
   const { currentPage, perPage, offset } = buildPagination(page, limit);
   const conditions = [];
@@ -33,6 +34,12 @@ async function findAll({
     if (value !== undefined && value !== null && value !== "") {
       conditions.push(`${field} = ?`);
       values.push(value);
+    }
+  });
+
+  extraConditions.forEach((condition) => {
+    if (condition) {
+      conditions.push(condition);
     }
   });
 

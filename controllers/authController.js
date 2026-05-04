@@ -1,6 +1,7 @@
 const userModel = require("../models/userModel");
 const { verifyPassword } = require("../services/passwordService");
 const { validateLogin } = require("../services/validationService");
+const auditService = require("../services/auditService");
 
 function showLogin(req, res) {
   if (req.session.user) {
@@ -35,7 +36,13 @@ async function login(req, res, next) {
             nama: user.nama_admin,
             email: user.email_admin,
           }
-        : user.role === "teknisi"
+        : user.role === "manajemen"
+          ? {
+              manajemen_id: user.manajemen_id,
+              nama: user.nama_manajemen,
+              email: user.email_manajemen,
+            }
+          : user.role === "teknisi"
           ? {
               teknisi_id: user.teknisi_id,
               nama: user.nama_teknisi,
@@ -58,6 +65,7 @@ async function login(req, res, next) {
       ...roleProfile,
     };
 
+    auditService.log(req, "login", "users", `User ${user.username} login sebagai ${user.role}.`);
     res.redirect("/dashboard");
   } catch (error) {
     next(error);

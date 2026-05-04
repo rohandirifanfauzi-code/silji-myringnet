@@ -16,6 +16,16 @@ const billingService = require("../services/billingService");
 const baseModel = require("../models/baseModel");
 const { TASK_STATUS, BILL_STATUS, PAYMENT_STATUS } = require("../constants/statuses");
 
+const TEST_PASSWORD_HASHES = {
+  admin: "$2b$10$lWFzdy8z02V7i4Oetc4UTu3MR4IHvsaKeCkdJtEPvWfxLU/wV5VHe",
+  pelanggan1: "$2b$10$VvdcCnyKUuWln.Gty.HqWeJ.xUexbTwV1m6I0rBG.uyi9MFba.s.K",
+  teknisi1: "$2b$10$eefpaPAH8NVc9kIFQVR4HeRqJ93jP5SDgHcDC5r/u7VDBXhx1KSJm",
+};
+
+test.after(async () => {
+  await baseModel.pool.end();
+});
+
 async function startTestServer() {
   const server = app.listen(0);
   await once(server, "listening");
@@ -38,6 +48,7 @@ async function startTestServer() {
 
 function createAgent(baseUrl) {
   const cookies = new Map();
+  let csrfToken = null;
 
   function updateCookies(response) {
     const setCookies =
@@ -61,11 +72,27 @@ function createAgent(baseUrl) {
   }
 
   return {
+    async csrf() {
+      if (csrfToken) {
+        return csrfToken;
+      }
+
+      const response = await this.request("/login");
+      const html = await response.text();
+      const match = html.match(/name="_csrf" value="([^"]+)"/);
+      assert.ok(match, "CSRF token should be rendered on login page");
+      csrfToken = match[1];
+      return csrfToken;
+    },
     async request(path, options = {}) {
       const headers = new Headers(options.headers || {});
-      const body = options.form ? new URLSearchParams(options.form).toString() : options.body;
+      const form =
+        options.form && options.csrf !== false
+          ? { _csrf: csrfToken, ...options.form }
+          : options.form;
+      const body = form ? new URLSearchParams(form).toString() : options.body;
 
-      if (options.form) {
+      if (form) {
         headers.set("content-type", "application/x-www-form-urlencoded");
       }
 
@@ -109,7 +136,7 @@ test("HTTP flow: admin login then create pelanggan with automatic account and PS
         return {
           id: 1,
           username: "admin",
-          password: "admin123",
+          password: TEST_PASSWORD_HASHES.admin,
           role: "admin",
           admin_id: 10,
           nama_admin: "Administrator",
@@ -151,6 +178,7 @@ test("HTTP flow: admin login then create pelanggan with automatic account and PS
       })
     );
 
+    await agent.csrf();
     let response = await agent.request("/login", {
       method: "POST",
       form: { username: "admin", password: "admin123" },
@@ -194,7 +222,7 @@ test("HTTP flow: teknisi marks PSB task complete and triggers bill generation on
         return {
           id: 2,
           username: "teknisi1",
-          password: "teknisi123",
+          password: TEST_PASSWORD_HASHES.teknisi1,
           role: "teknisi",
           teknisi_id: 55,
           nama_teknisi: "Andi Teknisi",
@@ -233,6 +261,7 @@ test("HTTP flow: teknisi marks PSB task complete and triggers bill generation on
     );
     restores.push(stubMethod(notificationService, "createNotification", async () => {}));
 
+    await agent.csrf();
     let response = await agent.request("/login", {
       method: "POST",
       form: { username: "teknisi1", password: "teknisi123" },
@@ -272,7 +301,7 @@ test("HTTP flow: pelanggan prepares QRIS payment then confirms it", async () => 
         return {
           id: 3,
           username: "pelanggan1",
-          password: "pelanggan123",
+          password: TEST_PASSWORD_HASHES.pelanggan1,
           role: "pelanggan",
           pelanggan_id: 40,
           nama_pelanggan: "Budi Santoso",
@@ -304,8 +333,6 @@ test("HTTP flow: pelanggan prepares QRIS payment then confirms it", async () => 
         jumlah_tagihan: 250000,
       }))
     );
-    restores.push(stubMethod(pembayaranModel, "findPendingByBillAndMethod", async () => null));
-    restores.push(stubMethod(pembayaranModel, "create", async () => 501));
     restores.push(
       stubMethod(pembayaranModel, "getById", async (id) => ({
         id: Number(id),
@@ -319,13 +346,61 @@ test("HTTP flow: pelanggan prepares QRIS payment then confirms it", async () => 
     );
 
     const paymentUpdates = [];
+    const billUpdates = [];
+    restores.push(
+      stubMethod(baseModel.pool, "getConnection", async () => ({
+        beginTransaction: async () => {},
+        commit: async () => {},
+        rollback: async () => {},
+        release: () => {},
+        query: async (sql, payload) => {
+          const statement = String(sql);
+          if (statement.includes("SELECT tagihan.*")) {
+            return [[{
+              id: 70,
+              id_pelanggan: 40,
+              id_paket: 1,
+              nama_pelanggan: "Budi Santoso",
+              nama_paket: "Basic 20 Mbps",
+              jumlah_tagihan: 250000,
+              status_tagihan: BILL_STATUS.UNPAID,
+            }]];
+          }
+          if (statement.includes("WHERE pembayaran.id_tagihan")) {
+            return [[]];
+          }
+          if (statement.includes("INSERT INTO pembayaran")) {
+            return [{ insertId: 501 }];
+          }
+          if (statement.includes("WHERE pembayaran.id =")) {
+            return [[{
+              id: 501,
+              id_tagihan: 70,
+              id_pelanggan: 40,
+              metode: "qris",
+              status: PAYMENT_STATUS.PENDING,
+              status_pembayaran: PAYMENT_STATUS.PENDING,
+              status_tagihan: BILL_STATUS.UNPAID,
+            }]];
+          }
+          if (statement.includes("UPDATE pembayaran")) {
+            paymentUpdates.push({ payload: payload[0], id: payload[1] });
+            return [{ affectedRows: 1 }];
+          }
+          if (statement.includes("UPDATE tagihan")) {
+            billUpdates.push({ payload: payload[0], id: payload[1] });
+            return [{ affectedRows: 1 }];
+          }
+          return [{ insertId: 1, affectedRows: 1 }];
+        },
+      }))
+    );
     restores.push(
       stubMethod(pembayaranModel, "update", async (id, payload) => {
         paymentUpdates.push({ id, payload });
         return 1;
       })
     );
-    const billUpdates = [];
     restores.push(
       stubMethod(tagihanModel, "update", async (id, payload) => {
         billUpdates.push({ id, payload });
@@ -334,6 +409,7 @@ test("HTTP flow: pelanggan prepares QRIS payment then confirms it", async () => 
     );
     restores.push(stubMethod(notificationService, "createNotification", async () => {}));
 
+    await agent.csrf();
     let response = await agent.request("/login", {
       method: "POST",
       form: { username: "pelanggan1", password: "pelanggan123" },
@@ -384,7 +460,7 @@ test("HTTP flow: pelanggan creates complaint then admin assigns technician", asy
           return {
             id: 3,
             username: "pelanggan1",
-            password: "pelanggan123",
+            password: TEST_PASSWORD_HASHES.pelanggan1,
             role: "pelanggan",
             pelanggan_id: 40,
             nama_pelanggan: "Budi Santoso",
@@ -399,7 +475,7 @@ test("HTTP flow: pelanggan creates complaint then admin assigns technician", asy
           return {
             id: 1,
             username: "admin",
-            password: "admin123",
+            password: TEST_PASSWORD_HASHES.admin,
             role: "admin",
             admin_id: 10,
             nama_admin: "Administrator",
@@ -438,11 +514,42 @@ test("HTTP flow: pelanggan creates complaint then admin assigns technician", asy
     );
 
     const createdTasks = [];
+    const assignmentQueries = [];
     restores.push(
       stubMethod(tugasTeknisiModel, "create", async (payload) => {
         createdTasks.push(payload);
         return 909;
       })
+    );
+    restores.push(
+      stubMethod(baseModel.pool, "getConnection", async () => ({
+        beginTransaction: async () => {},
+        commit: async () => {},
+        rollback: async () => {},
+        release: () => {},
+        query: async (sql, payload) => {
+          const statement = String(sql);
+          assignmentQueries.push({ sql: statement, payload });
+          if (statement.includes("SELECT keluhan.*")) {
+            return [[{
+              id: 71,
+              id_pelanggan: 40,
+              nama_pelanggan: "Budi Santoso",
+              alamat_pelanggan: "Jl. Kenanga No. 10",
+              status: "pending",
+            }]];
+          }
+          if (statement.includes("INSERT INTO tugas_teknisi")) {
+            createdTasks.push(payload);
+            return [{ insertId: 909 }];
+          }
+          if (statement.includes("UPDATE keluhan")) {
+            updatedComplaints.push({ id: payload[1], payload: payload[0] });
+            return [{ affectedRows: 1 }];
+          }
+          return [{ insertId: 1, affectedRows: 1 }];
+        },
+      }))
     );
 
     const notifications = [];
@@ -452,6 +559,7 @@ test("HTTP flow: pelanggan creates complaint then admin assigns technician", asy
       })
     );
 
+    await customerAgent.csrf();
     let response = await customerAgent.request("/login", {
       method: "POST",
       form: { username: "pelanggan1", password: "pelanggan123" },
@@ -470,6 +578,7 @@ test("HTTP flow: pelanggan creates complaint then admin assigns technician", asy
     assert.equal(createdComplaints.length, 1);
     assert.equal(createdComplaints[0].id_pelanggan, 40);
 
+    await adminAgent.csrf();
     response = await adminAgent.request("/login", {
       method: "POST",
       form: { username: "admin", password: "admin123" },
@@ -489,10 +598,13 @@ test("HTTP flow: pelanggan creates complaint then admin assigns technician", asy
     assert.equal(createdTasks.length, 1);
     assert.equal(createdTasks[0].tipe_tugas, "maintenance");
     assert.equal(updatedComplaints.length, 1);
-    assert.equal(updatedComplaints[0].payload.status, "DIPROSES");
-    assert.equal(notifications.length, 3);
-    assert.equal(typeof notifications[1], "string");
-    assert.equal(notifications[2].role_tujuan, "teknisi");
+    assert.equal(updatedComplaints[0].payload.status, "proses");
+    assert.equal(notifications.length, 1);
+    assert.equal(typeof notifications[0], "string");
+    assert.equal(
+      assignmentQueries.filter((item) => item.sql.includes("INSERT INTO notifikasi")).length,
+      2
+    );
   } finally {
     restores.reverse().forEach((restore) => restore());
     await server.close();

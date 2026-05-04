@@ -1,23 +1,36 @@
 const TASK_STATUS = Object.freeze({
-  PENDING: "DITUGASKAN",
-  IN_PROGRESS: "PROSES",
-  DONE: "SELESAI",
+  PENDING: "pending",
+  IN_PROGRESS: "proses",
+  DONE: "selesai",
 });
 
 const COMPLAINT_STATUS = Object.freeze({
-  NEW: "BARU",
-  IN_PROGRESS: "DIPROSES",
-  DONE: "SELESAI",
+  NEW: "pending",
+  IN_PROGRESS: "proses",
+  DONE: "selesai",
 });
 
 const BILL_STATUS = Object.freeze({
-  UNPAID: "BELUM BAYAR",
-  PAID: "LUNAS",
+  UNPAID: "belum_bayar",
+  PAID: "lunas",
 });
 
 const PAYMENT_STATUS = Object.freeze({
   PENDING: "pending",
   PAID: "paid",
+  FAILED: "failed",
+});
+
+const NOTIFICATION_STATUS = Object.freeze({
+  UNREAD: "unread",
+  READ: "read",
+  SCHEDULED: "scheduled",
+});
+
+const NOTIFICATION_LIFECYCLE = Object.freeze({
+  PENDING: "pending",
+  SCHEDULED: "scheduled",
+  DONE: "done",
 });
 
 module.exports = {
@@ -25,4 +38,6 @@ module.exports = {
   COMPLAINT_STATUS,
   BILL_STATUS,
   PAYMENT_STATUS,
+  NOTIFICATION_STATUS,
+  NOTIFICATION_LIFECYCLE,
 };

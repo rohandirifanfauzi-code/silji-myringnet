@@ -1,7 +1,12 @@
 const billingModel = require("../models/billingModel");
 const tagihanModel = require("../models/tagihanModel");
 const notificationService = require("./notificationService");
-const { BILL_STATUS } = require("../constants/statuses");
+const { pool } = require("../models/baseModel");
+const {
+  BILL_STATUS,
+  NOTIFICATION_LIFECYCLE,
+  NOTIFICATION_STATUS,
+} = require("../constants/statuses");
 
 function getBillDay(dateValue) {
   return new Date(dateValue).getDate();
@@ -16,29 +21,65 @@ function isBillingDate(tanggalDaftar, runDate) {
 }
 
 async function createBillForCustomer(customer, billDate) {
-  const existing = await tagihanModel.findMonthlyBillByCustomerAndPackage(
-    customer.id,
-    customer.id_paket,
-    billDate
-  );
+  let connection;
+  let created = false;
 
-  if (existing) {
-    return false;
+  try {
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    const existing = await tagihanModel.findMonthlyBillByCustomerAndPackage(
+      customer.id,
+      customer.id_paket,
+      billDate,
+      connection
+    );
+
+    if (!existing) {
+      await tagihanModel.create(
+        {
+          id_pelanggan: customer.id,
+          id_paket: customer.id_paket,
+          tanggal_tagihan: billDate,
+          jumlah_tagihan: customer.harga,
+          status_tagihan: BILL_STATUS.UNPAID,
+        },
+        connection
+      );
+      await connection.query("INSERT INTO notifikasi SET ?", {
+        pesan: `Tagihan untuk ${customer.nama} dibuat mengikuti tanggal pemasangan ${getBillDay(
+          customer.tanggal_daftar
+        )}.`,
+        role_tujuan: "admin",
+        tipe: "general",
+        tanggal: new Date(),
+        status_baca: NOTIFICATION_STATUS.UNREAD,
+        status_notifikasi: NOTIFICATION_LIFECYCLE.PENDING,
+      });
+      created = true;
+    }
+
+    await connection.commit();
+  } catch (error) {
+    if (connection) {
+      await connection.rollback();
+    }
+    throw error;
+  } finally {
+    if (connection) {
+      connection.release();
+    }
   }
 
-  await tagihanModel.create({
-    id_pelanggan: customer.id,
-    id_paket: customer.id_paket,
-    tanggal_tagihan: billDate,
-    jumlah_tagihan: customer.harga,
-    status_tagihan: BILL_STATUS.UNPAID,
-  });
-  await notificationService.createNotification(
-    `Tagihan untuk ${customer.nama} dibuat mengikuti tanggal pemasangan ${getBillDay(
-      customer.tanggal_daftar
-    )}.`
-  );
-  return true;
+  if (created) {
+    await notificationService.createExternalForCustomer({
+      id_pelanggan: customer.id,
+      subject: "Tagihan baru",
+      message: `Tagihan internet ${customer.nama} sebesar Rp ${Number(customer.harga).toLocaleString("id-ID")} telah dibuat.`,
+    });
+  }
+
+  return created;
 }
 
 async function generateScheduledBills(runDate = new Date()) {

@@ -2,7 +2,7 @@ const { pool } = require("./baseModel");
 
 async function getSummary() {
   const queries = [
-    pool.query("SELECT COUNT(*) AS total FROM pelanggan"),
+    pool.query("SELECT COUNT(*) AS total_pelanggan FROM pelanggan"),
     pool.query("SELECT COUNT(*) AS total FROM tagihan"),
     pool.query("SELECT COUNT(*) AS total FROM pembayaran"),
     pool.query("SELECT COUNT(*) AS total FROM keluhan"),
@@ -11,7 +11,7 @@ async function getSummary() {
   const results = await Promise.all(queries);
 
   return {
-    totalPelanggan: results[0][0][0].total,
+    totalPelanggan: results[0][0][0].total_pelanggan,
     totalTagihan: results[1][0][0].total,
     totalPembayaran: results[2][0][0].total,
     totalKeluhan: results[3][0][0].total,
@@ -30,7 +30,7 @@ async function getCustomerSummary(pelangganId) {
     ),
     pool.query("SELECT COUNT(*) AS total FROM keluhan WHERE id_pelanggan = ?", [pelangganId]),
     pool.query(
-      "SELECT COUNT(*) AS total FROM tagihan WHERE id_pelanggan = ? AND status_tagihan = 'BELUM BAYAR'",
+      "SELECT COUNT(*) AS total FROM tagihan WHERE id_pelanggan = ? AND status_tagihan = 'belum_bayar'",
       [pelangganId]
     ),
   ];
@@ -53,18 +53,18 @@ async function getTechnicianSummary(teknisiId) {
   const queries = [
     pool.query("SELECT COUNT(*) AS total FROM tugas_teknisi WHERE id_teknisi = ?", [teknisiId]),
     pool.query(
-      "SELECT COUNT(*) AS total FROM tugas_teknisi WHERE id_teknisi = ? AND status = 'PROSES'",
+      "SELECT COUNT(*) AS total FROM tugas_teknisi WHERE id_teknisi = ? AND status = 'proses'",
       [teknisiId]
     ),
     pool.query(
-      "SELECT COUNT(*) AS total FROM tugas_teknisi WHERE id_teknisi = ? AND status = 'SELESAI'",
+      "SELECT COUNT(*) AS total FROM tugas_teknisi WHERE id_teknisi = ? AND status = 'selesai'",
       [teknisiId]
     ),
     pool.query(
       `SELECT COUNT(*) AS total
        FROM tugas_teknisi
        INNER JOIN keluhan ON keluhan.id = tugas_teknisi.id_keluhan
-       WHERE tugas_teknisi.id_teknisi = ? AND keluhan.status <> 'SELESAI'`,
+       WHERE tugas_teknisi.id_teknisi = ? AND keluhan.status <> 'selesai'`,
       [teknisiId]
     ),
   ];

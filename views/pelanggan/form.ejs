@@ -5,8 +5,10 @@
     <div class="card-body">
       <h1 class="h4 mb-4"><%= item ? 'Edit' : 'Tambah' %> Pelanggan</h1>
       <form method="post" action="<%= item ? `/pelanggan/${item.id}?_method=PUT` : '/pelanggan' %>" class="row g-3">
+        <%- include('../partials/csrf') %>
         <div class="col-md-6"><label class="form-label">Nama</label><input class="form-control" name="nama" value="<%= item?.nama || '' %>" required /></div>
         <div class="col-md-6"><label class="form-label">No HP</label><input class="form-control" name="no_hp" value="<%= item?.no_hp || '' %>" required /></div>
+        <div class="col-md-6"><label class="form-label">Email</label><input type="email" class="form-control" name="email" value="<%= item?.email || '' %>" /></div>
         <div class="col-md-6">
           <label class="form-label">Paket</label>
           <select class="form-select" name="id_paket" required>
@@ -17,6 +19,8 @@
           </select>
         </div>
         <div class="col-12"><label class="form-label">Alamat</label><textarea class="form-control" name="alamat" rows="3" required><%= item?.alamat || '' %></textarea></div>
+        <div class="col-md-6"><label class="form-label">Latitude</label><input type="number" step="0.0000001" class="form-control" name="latitude" value="<%= item?.latitude || '' %>" /></div>
+        <div class="col-md-6"><label class="form-label">Longitude</label><input type="number" step="0.0000001" class="form-control" name="longitude" value="<%= item?.longitude || '' %>" /></div>
         <div class="col-md-6">
           <label class="form-label">Info Akun</label>
           <input class="form-control" value="<%= item?.username || 'Akan dibuat otomatis setelah disimpan' %>" disabled />

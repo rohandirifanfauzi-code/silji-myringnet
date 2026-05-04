@@ -1,5 +1,6 @@
 const express = require("express");
 const controller = require("../controllers/keluhanController");
+const multer = require("multer");
 const upload = require("../config/multer");
 const { ensureAuthenticated, allowRoles } = require("../middlewares/authMiddleware");
 const { withValidation } = require("../middlewares/validationMiddleware");
@@ -11,6 +12,22 @@ const {
 const { TASK_STATUS } = require("../constants/statuses");
 
 const router = express.Router();
+
+function handleUploadError(error, req, res, next) {
+  if (!error) {
+    next();
+    return;
+  }
+
+  if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
+    req.flash("error", "Ukuran file bukti maksimal 2MB.");
+    res.redirect("/keluhan");
+    return;
+  }
+
+  req.flash("error", error.message || "Upload file bukti tidak valid.");
+  res.redirect("/keluhan");
+}
 
 router.get("/", ensureAuthenticated, allowRoles("admin", "pelanggan", "teknisi"), controller.index);
 router.get("/create", ensureAuthenticated, allowRoles("admin", "pelanggan"), controller.createForm);
@@ -57,6 +74,7 @@ router.post(
   ensureAuthenticated,
   allowRoles("admin", "teknisi"),
   upload.single("foto_bukti"),
+  handleUploadError,
   controller.uploadResult
 );
 

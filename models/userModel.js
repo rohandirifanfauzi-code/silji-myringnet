@@ -6,6 +6,9 @@ async function findByUsername(username) {
             admin.id AS admin_id,
             admin.nama AS nama_admin,
             admin.email AS email_admin,
+            manajemen.id AS manajemen_id,
+            manajemen.nama AS nama_manajemen,
+            manajemen.email AS email_manajemen,
             teknisi.id AS teknisi_id,
             teknisi.nama AS nama_teknisi,
             teknisi.no_hp AS no_hp_teknisi,
@@ -18,6 +21,7 @@ async function findByUsername(username) {
             pelanggan.tanggal_daftar AS tanggal_daftar_pelanggan
      FROM users
      LEFT JOIN admin ON admin.user_id = users.id
+     LEFT JOIN manajemen ON manajemen.user_id = users.id
      LEFT JOIN teknisi ON teknisi.user_id = users.id
      LEFT JOIN pelanggan ON pelanggan.user_id = users.id
      WHERE users.username = ?

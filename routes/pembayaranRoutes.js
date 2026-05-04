@@ -14,7 +14,16 @@ router.post(
   "/prepare",
   ensureAuthenticated,
   allowRoles("admin", "pelanggan"),
-  withValidation(validatePaymentPreparation, () => "/pembayaran"),
+  withValidation(
+    (body, req) => {
+      const errors = validatePaymentPreparation(body);
+      if (req.user.role === "admin" && !body.id_tagihan) {
+        errors.unshift("Tagihan wajib dipilih.");
+      }
+      return errors;
+    },
+    () => "/pembayaran"
+  ),
   controller.prepare
 );
 router.post(
@@ -22,7 +31,10 @@ router.post(
   ensureAuthenticated,
   allowRoles("admin", "pelanggan"),
   withValidation(
-    (body) => (String(body.metode || "").toLowerCase() === "cash" ? validateCashPayment(body) : []),
+    (body, req) =>
+      req.user.role === "admin" && String(body.metode || "").toLowerCase() === "cash"
+        ? validateCashPayment(body)
+        : [],
     () => "/pembayaran"
   ),
   controller.store

@@ -44,4 +44,15 @@ module.exports = {
     );
     return rows[0] || null;
   },
+  findByReference: async (reference) => {
+    const [rows] = await baseModel.pool.query(
+      `SELECT pembayaran.*, tagihan.id_pelanggan, tagihan.status_tagihan
+       FROM pembayaran
+       INNER JOIN tagihan ON tagihan.id = pembayaran.id_tagihan
+       WHERE pembayaran.payment_reference = ?
+       LIMIT 1`,
+      [reference]
+    );
+    return rows[0] || null;
+  },
 };

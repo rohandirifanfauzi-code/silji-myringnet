@@ -1,6 +1,10 @@
 const notifikasiModel = require("../models/notifikasiModel");
 const tugasTeknisiModel = require("../models/tugasTeknisiModel");
-const { TASK_STATUS } = require("../constants/statuses");
+const {
+  TASK_STATUS,
+  NOTIFICATION_STATUS,
+  NOTIFICATION_LIFECYCLE,
+} = require("../constants/statuses");
 
 async function index(req, res, next) {
   try {
@@ -37,7 +41,7 @@ async function markRead(req, res, next) {
       res.redirect("/notifikasi");
       return;
     }
-    await notifikasiModel.update(req.params.id, { status_baca: "SUDAH" });
+    await notifikasiModel.update(req.params.id, { status_baca: NOTIFICATION_STATUS.READ });
     res.redirect("/notifikasi");
   } catch (error) {
     next(error);
@@ -74,11 +78,17 @@ async function scheduleTask(req, res, next) {
     let taskId = item.id_tugas;
 
     if (taskId) {
-      await tugasTeknisiModel.update(taskId, {
+      const updated = await tugasTeknisiModel.update(taskId, {
         tanggal_tugas: req.body.tanggal_tugas,
         id_teknisi: req.user.teknisi_id,
+        status: TASK_STATUS.IN_PROGRESS,
       });
-    } else {
+      if (!updated) {
+        taskId = null;
+      }
+    }
+
+    if (!taskId) {
       taskId = await tugasTeknisiModel.create({
         id_keluhan: null,
         id_pelanggan: item.id_pelanggan || null,
@@ -86,7 +96,7 @@ async function scheduleTask(req, res, next) {
         detail_lokasi: item.alamat || "-",
         tipe_tugas: item.tipe === "psb" ? "psb" : "maintenance",
         tanggal_tugas: req.body.tanggal_tugas,
-        status: TASK_STATUS.PENDING,
+        status: TASK_STATUS.IN_PROGRESS,
       });
     }
 
@@ -94,10 +104,11 @@ async function scheduleTask(req, res, next) {
       id_tugas: taskId,
       id_teknisi: req.user.teknisi_id,
       tanggal_saran: req.body.tanggal_tugas,
-      status_baca: "SUDAH",
+      status_baca: NOTIFICATION_STATUS.SCHEDULED,
+      status_notifikasi: NOTIFICATION_LIFECYCLE.SCHEDULED,
     });
 
-    req.flash("success", "Tanggal tugas berhasil diatur.");
+    req.flash("success", "Jadwal tugas berhasil diatur.");
     res.redirect("/notifikasi");
   } catch (error) {
     next(error);

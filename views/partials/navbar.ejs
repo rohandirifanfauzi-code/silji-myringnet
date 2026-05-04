@@ -31,6 +31,9 @@
         <% if (hasRole('admin')) { %>
           <li class="nav-item"><a class="nav-link <%= currentPath.startsWith('/teknisi') ? 'active' : '' %>" href="/teknisi">Teknisi</a></li>
         <% } %>
+        <% if (hasRole('admin', 'manajemen')) { %>
+          <li class="nav-item"><a class="nav-link <%= currentPath.startsWith('/laporan') ? 'active' : '' %>" href="/laporan">Laporan</a></li>
+        <% } %>
         <% if (hasRole('admin', 'teknisi')) { %>
           <li class="nav-item"><a class="nav-link <%= currentPath.startsWith('/notifikasi') ? 'active' : '' %>" href="/notifikasi">Notifikasi</a></li>
         <% } %>
@@ -42,6 +45,7 @@
           <span class="user-chip__role"><%= currentUser ? currentUser.role : '-' %></span>
         </div>
         <form action="/logout" method="post">
+          <%- include('./csrf') %>
           <button type="submit" class="btn btn-light btn-sm app-logout-btn">Logout</button>
         </form>
       </div>

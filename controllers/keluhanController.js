@@ -3,12 +3,16 @@ const pelangganModel = require("../models/pelangganModel");
 const tugasTeknisiModel = require("../models/tugasTeknisiModel");
 const teknisiModel = require("../models/teknisiModel");
 const hasilPekerjaanModel = require("../models/hasilPekerjaanModel");
+const notifikasiModel = require("../models/notifikasiModel");
 const notificationService = require("../services/notificationService");
 const billingService = require("../services/billingService");
+const { pool } = require("../models/baseModel");
 const {
   TASK_STATUS,
   COMPLAINT_STATUS,
   BILL_STATUS,
+  NOTIFICATION_STATUS,
+  NOTIFICATION_LIFECYCLE,
 } = require("../constants/statuses");
 
 function mapTaskStatusToComplaintStatus(status) {
@@ -19,6 +23,10 @@ function mapTaskStatusToComplaintStatus(status) {
     return COMPLAINT_STATUS.IN_PROGRESS;
   }
   return COMPLAINT_STATUS.NEW;
+}
+
+function todayDateInput() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 async function generateBillIfPsbCompleted(task, nextStatus) {
@@ -36,11 +44,10 @@ async function generateBillIfPsbCompleted(task, nextStatus) {
 async function index(req, res, next) {
   try {
     if (req.user.role === "teknisi") {
-      const [tugasHariIni, tugasHistory] = await Promise.all([
+      const [tugasTeknisi, tugasHistory] = await Promise.all([
         tugasTeknisiModel.getAll({
           ...req.query,
           id_teknisi: req.user.teknisi_id,
-          todayOnly: true,
         }),
         tugasTeknisiModel.getAll({
           page: 1,
@@ -52,10 +59,10 @@ async function index(req, res, next) {
       res.render("keluhan/index", {
         title: "Tugas Teknisi",
         data: [],
-        tugas: tugasHariIni.rows,
+        tugas: tugasTeknisi.rows,
         tugasHistory: tugasHistory.rows,
         teknisi: [],
-        pagination: tugasHariIni.pagination,
+        pagination: tugasTeknisi.pagination,
         query: req.query,
       });
       return;
@@ -64,6 +71,8 @@ async function index(req, res, next) {
     const filters =
       req.user.role === "pelanggan"
         ? { ...req.query, id_pelanggan: req.user.pelanggan_id }
+        : req.user.role === "admin"
+          ? { ...req.query, unassignedOnly: true }
         : req.query;
 
     if (req.user.role === "pelanggan") {
@@ -75,7 +84,11 @@ async function index(req, res, next) {
     const [keluhan, teknisi, tugas] = await Promise.all([
       keluhanModel.getAll(filters),
       teknisiModel.getAll({ page: 1, limit: 100 }),
-      tugasTeknisiModel.getAll({ page: 1, limit: 100 }),
+      tugasTeknisiModel.getAll(
+        req.user.role === "pelanggan"
+          ? { page: 1, limit: 100, id_pelanggan: req.user.pelanggan_id }
+          : { page: 1, limit: 100 }
+      ),
     ]);
     res.render("keluhan/index", {
       title:
@@ -83,7 +96,7 @@ async function index(req, res, next) {
           ? "Keluhan Saya"
           : "Keluhan & Tugas Teknisi",
       data: keluhan.rows,
-      tugas: req.user.role === "pelanggan" ? [] : tugas.rows,
+      tugas: tugas.rows,
       teknisi: teknisi.rows,
       pagination: keluhan.pagination,
       query: filters,
@@ -125,13 +138,18 @@ async function store(req, res, next) {
         ? req.user.pelanggan_id
         : req.body.id_pelanggan;
 
-    await keluhanModel.create({
+    const keluhanId = await keluhanModel.create({
       id_pelanggan: idPelanggan,
       deskripsi: req.body.deskripsi,
       tanggal: req.body.tanggal,
       status: req.body.status || COMPLAINT_STATUS.NEW,
     });
     await notificationService.createNotification("Keluhan baru berhasil dibuat.");
+    await notificationService.createExternalForCustomer({
+      id_pelanggan: idPelanggan,
+      subject: "Keluhan diterima",
+      message: `Keluhan #${keluhanId} telah diterima dan akan diproses oleh MyRingNet.`,
+    });
     req.flash("success", "Keluhan berhasil disimpan.");
     res.redirect("/keluhan");
   } catch (error) {
@@ -225,34 +243,83 @@ async function destroy(req, res, next) {
 }
 
 async function assignTechnician(req, res, next) {
+  let connection;
   try {
-    const keluhan = await keluhanModel.getById(req.body.id_keluhan);
-    const taskId = await tugasTeknisiModel.create({
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    const [keluhanRows] = await connection.query(
+      `SELECT keluhan.*, pelanggan.nama AS nama_pelanggan, pelanggan.alamat AS alamat_pelanggan
+       FROM keluhan
+       LEFT JOIN pelanggan ON pelanggan.id = keluhan.id_pelanggan
+       WHERE keluhan.id = ?
+       FOR UPDATE`,
+      [req.body.id_keluhan]
+    );
+    const keluhan = keluhanRows[0];
+
+    if (!keluhan) {
+      await connection.rollback();
+      req.flash("error", "Keluhan tidak ditemukan.");
+      res.redirect("/keluhan");
+      return;
+    }
+
+    if (keluhan.status !== COMPLAINT_STATUS.NEW) {
+      await connection.rollback();
+      req.flash("error", "Keluhan sudah diproses atau selesai.");
+      res.redirect("/keluhan");
+      return;
+    }
+
+    const [taskResult] = await connection.query("INSERT INTO tugas_teknisi SET ?", {
       id_keluhan: req.body.id_keluhan,
-      id_pelanggan: keluhan?.id_pelanggan || null,
+      id_pelanggan: keluhan.id_pelanggan || null,
       id_teknisi: req.body.id_teknisi,
-      detail_lokasi: req.body.detail_lokasi,
+      detail_lokasi: keluhan.alamat_pelanggan || "-",
       tipe_tugas: "maintenance",
-      tanggal_tugas: null,
+      tanggal_tugas: todayDateInput(),
       status: TASK_STATUS.PENDING,
     });
-    await keluhanModel.update(req.body.id_keluhan, { status: COMPLAINT_STATUS.IN_PROGRESS });
-    await notificationService.createNotification(
-      `Keluhan #${req.body.id_keluhan} telah di-assign ke teknisi.`
-    );
-    await notificationService.createNotification({
+    const taskId = taskResult.insertId;
+
+    await connection.query("UPDATE keluhan SET ? WHERE id = ?", [
+      { status: COMPLAINT_STATUS.IN_PROGRESS },
+      req.body.id_keluhan,
+    ]);
+    await connection.query("INSERT INTO notifikasi SET ?", {
+      pesan: `Keluhan #${req.body.id_keluhan} telah di-assign ke teknisi.`,
+      role_tujuan: "admin",
+      tipe: "general",
+      tanggal: new Date(),
+      status_baca: NOTIFICATION_STATUS.UNREAD,
+      status_notifikasi: NOTIFICATION_LIFECYCLE.PENDING,
+    });
+    await connection.query("INSERT INTO notifikasi SET ?", {
       pesan: `Tugas maintenance baru untuk ${keluhan?.nama_pelanggan || "pelanggan"}.`,
       role_tujuan: "teknisi",
       tipe: "maintenance",
-      alamat: req.body.detail_lokasi,
+      alamat: keluhan.alamat_pelanggan || null,
       id_teknisi: req.body.id_teknisi,
-      id_pelanggan: keluhan?.id_pelanggan || null,
+      id_pelanggan: keluhan.id_pelanggan || null,
       id_tugas: taskId,
+      tanggal: new Date(),
+      status_baca: NOTIFICATION_STATUS.UNREAD,
+      status_notifikasi: NOTIFICATION_LIFECYCLE.PENDING,
     });
+
+    await connection.commit();
     req.flash("success", "Teknisi berhasil di-assign.");
     res.redirect("/keluhan");
   } catch (error) {
+    if (connection) {
+      await connection.rollback();
+    }
     next(error);
+  } finally {
+    if (connection) {
+      connection.release();
+    }
   }
 }
 
@@ -279,6 +346,14 @@ async function updateTaskStatus(req, res, next) {
       detail_lokasi: req.body.detail_lokasi || task.detail_lokasi,
     });
     await generateBillIfPsbCompleted(task, req.body.status);
+    if (req.body.status === TASK_STATUS.DONE || req.body.status === TASK_STATUS.IN_PROGRESS) {
+      await notifikasiModel.updateByTaskId(req.params.id, {
+        status_notifikasi:
+          req.body.status === TASK_STATUS.DONE
+            ? NOTIFICATION_LIFECYCLE.DONE
+            : NOTIFICATION_LIFECYCLE.SCHEDULED,
+      });
+    }
     if (task.id_keluhan) {
       await keluhanModel.update(task.id_keluhan, {
         status: mapTaskStatusToComplaintStatus(req.body.status),
@@ -293,9 +368,14 @@ async function updateTaskStatus(req, res, next) {
     next(error);
   }
 }
-
 async function uploadResult(req, res, next) {
   try {
+    if (!req.file) {
+      req.flash("error", "File bukti wajib diupload dalam format JPG atau PNG.");
+      res.redirect("/keluhan");
+      return;
+    }
+
     const task = await tugasTeknisiModel.getById(req.body.id_tugas);
     if (!task) {
       req.flash("error", "Tugas teknisi tidak ditemukan.");
@@ -319,6 +399,9 @@ async function uploadResult(req, res, next) {
     });
     await tugasTeknisiModel.update(req.body.id_tugas, { status: TASK_STATUS.DONE });
     await generateBillIfPsbCompleted(task, TASK_STATUS.DONE);
+    await notifikasiModel.updateByTaskId(req.body.id_tugas, {
+      status_notifikasi: NOTIFICATION_LIFECYCLE.DONE,
+    });
     if (task.id_keluhan) {
       await keluhanModel.update(task.id_keluhan, { status: COMPLAINT_STATUS.DONE });
     }

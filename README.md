@@ -1,28 +1,38 @@
-# SILJI for MyRingNet
+# SILJI MyRingNet
 
-Sistem Informasi Layanan Internet berbasis Node.js, Express.js, MySQL, Bootstrap, dan arsitektur MVC.
+Sistem Informasi Layanan Internet berbasis Node.js, Express, EJS, MySQL, Bootstrap, dan arsitektur MVC.
 
-## Fitur
+## Fitur Utama
 
-- Login sederhana untuk `admin`, `pelanggan`, dan `teknisi`
-- Login berbasis role untuk `admin`, `pelanggan`, `teknisi`, dan `manajemen`
-- CRUD pelanggan, paket, tagihan, pembayaran, keluhan, dan teknisi
-- Pembuatan akun pelanggan otomatis saat admin menambah pelanggan baru
-- Auto billing terjadwal mengikuti tanggal pemasangan pertama pelanggan
-- Notifikasi database untuk tagihan, pembayaran, dan update keluhan
-- Assign teknisi dan upload hasil pekerjaan
-- Pagination, search, filter status, dan upload gambar bukti
-- Skema menambahkan tabel `users` dan kolom `pelanggan.id_paket` agar login role-based dan billing bulanan dapat berjalan
+- Dashboard role `admin`, `pelanggan`, `teknisi`, dan `manajemen`.
+- Flow keluhan terhubung ke tugas teknisi.
+- Tagihan dibuat otomatis oleh sistem billing, bukan input manual.
+- Pembayaran pelanggan dengan QRIS, VA, dan cash.
+- Laporan admin/manajemen dengan export PDF dan Excel.
+- Notifikasi teknisi dengan lifecycle `pending`, `scheduled`, `done`.
+- Proteksi dasar: bcrypt password, session secret wajib, CSRF, upload image-only, dan CORS terbatas.
 
-## Cara Menjalankan
+## Setup
 
-1. Import database:
+1. Install dependency:
+
+   ```powershell
+   npm install
+   ```
+
+2. Import database awal:
 
    ```powershell
    mysql -u root -p < database.sql
    ```
 
-2. Isi file `.env` di root project. File sudah disediakan dan dibaca otomatis saat aplikasi jalan:
+   Jika memakai PowerShell dan redirect `<` tidak bisa dipakai, jalankan:
+
+   ```powershell
+   Get-Content .\database.sql | mysql -u root -p
+   ```
+
+3. Buat `.env` di root project:
 
    ```env
    DB_HOST=localhost
@@ -30,16 +40,35 @@ Sistem Informasi Layanan Internet berbasis Node.js, Express.js, MySQL, Bootstrap
    DB_PASSWORD=isi_password_mysql_anda
    DB_NAME=myringnet
    PORT=3000
-   SESSION_SECRET=silji-secret
+   SESSION_SECRET=ganti_dengan_secret_panjang_dan_acak
+   SESSION_SECURE=false
+   CORS_ORIGIN=http://localhost:3000
    ```
 
-3. Jalankan aplikasi:
+   Untuk production atau HTTPS lokal, set `SESSION_SECURE=true`.
+
+4. Jalankan aplikasi:
 
    ```powershell
-   node app.js
+   npm start
    ```
 
-4. Buka [http://localhost:3000](http://localhost:3000)
+5. Buka:
+
+   ```text
+   http://localhost:3000
+   ```
+
+## Migration
+
+Untuk database yang sudah ada, jalankan migration berurutan sesuai kebutuhan:
+
+```powershell
+Get-Content .\migrations\001_srs_alignment.sql | mysql -u root -p myringnet
+Get-Content .\migrations\002_status_consistency.sql | mysql -u root -p myringnet
+Get-Content .\migrations\003_notification_lifecycle.sql | mysql -u root -p myringnet
+Get-Content .\migrations\004_bcrypt_default_passwords.sql | mysql -u root -p myringnet
+```
 
 ## Akun Demo
 
@@ -47,3 +76,15 @@ Sistem Informasi Layanan Internet berbasis Node.js, Express.js, MySQL, Bootstrap
 - `pelanggan1 / pelanggan123`
 - `teknisi1 / teknisi123`
 - `manajemen1 / manajemen123`
+
+Password seed di database disimpan sebagai bcrypt hash.
+
+## Test
+
+Jalankan seluruh test:
+
+```powershell
+npm test
+```
+
+Coverage test saat ini mencakup login admin, assign keluhan, tugas teknisi, pembayaran pelanggan, billing, validasi form, password security, dan validasi upload.

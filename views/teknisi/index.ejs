@@ -25,6 +25,7 @@
                   <div class="d-flex gap-2">
                     <a href="/teknisi/<%= item.id %>/edit" class="btn btn-sm btn-outline-primary">Edit</a>
                     <form action="/teknisi/<%= item.id %>/delete" method="post">
+                      <%- include('../partials/csrf') %>
                       <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Hapus data?')">Hapus</button>
                     </form>
                   </div>

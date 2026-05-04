@@ -5,6 +5,7 @@
     <div class="card-body">
       <h1 class="h4 mb-4"><%= item ? 'Edit' : 'Buat' %> Keluhan</h1>
       <form method="post" action="<%= item ? `/keluhan/${item.id}?_method=PUT` : '/keluhan' %>" class="row g-3">
+        <%- include('../partials/csrf') %>
         <% if (currentUser.role !== 'pelanggan') { %>
           <div class="col-md-6">
             <label class="form-label">Pelanggan</label>
@@ -21,13 +22,13 @@
           <div class="col-md-6">
             <label class="form-label">Status</label>
             <select class="form-select" name="status">
-              <% ['BARU', 'DIPROSES', 'SELESAI'].forEach((status) => { %>
-                <option value="<%= status %>" <%= (item?.status || 'BARU') === status ? 'selected' : '' %>><%= status %></option>
+              <% ['pending', 'proses', 'selesai'].forEach((status) => { %>
+                <option value="<%= status %>" <%= (item?.status || 'pending') === status ? 'selected' : '' %>><%= status %></option>
               <% }) %>
             </select>
           </div>
         <% } else { %>
-          <input type="hidden" name="status" value="<%= item?.status || 'BARU' %>" />
+          <input type="hidden" name="status" value="<%= item?.status || 'pending' %>" />
         <% } %>
         <div class="col-12 d-flex gap-2"><button class="btn btn-primary">Simpan</button><a href="/keluhan" class="btn btn-secondary">Kembali</a></div>
       </form>

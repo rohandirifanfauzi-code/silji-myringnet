@@ -5,6 +5,7 @@ const billingModel = require("../models/billingModel");
 const tagihanModel = require("../models/tagihanModel");
 const notificationService = require("../services/notificationService");
 const billingService = require("../services/billingService");
+const baseModel = require("../models/baseModel");
 const { BILL_STATUS } = require("../constants/statuses");
 
 test("isBillingDate respects customer install day and month length", () => {
@@ -47,8 +48,16 @@ test("generateBillAfterPsbCompletion creates one unpaid bill after completed PSB
   const originalFindMonthly = tagihanModel.findMonthlyBillByCustomerAndPackage;
   const originalCreate = tagihanModel.create;
   const originalNotify = notificationService.createNotification;
+  const originalGetConnection = baseModel.pool.getConnection;
 
   const createdPayloads = [];
+  const connection = {
+    beginTransaction: async () => {},
+    commit: async () => {},
+    rollback: async () => {},
+    release: () => {},
+    query: async () => [{}],
+  };
 
   billingModel.hasCompletedPsbTask = async () => true;
   billingModel.getCustomerById = async () => ({
@@ -64,6 +73,7 @@ test("generateBillAfterPsbCompletion creates one unpaid bill after completed PSB
     return 101;
   };
   notificationService.createNotification = async () => {};
+  baseModel.pool.getConnection = async () => connection;
 
   const result = await billingService.generateBillAfterPsbCompletion(22, new Date("2026-05-03"));
   assert.equal(result.id, 22);
@@ -76,4 +86,5 @@ test("generateBillAfterPsbCompletion creates one unpaid bill after completed PSB
   tagihanModel.findMonthlyBillByCustomerAndPackage = originalFindMonthly;
   tagihanModel.create = originalCreate;
   notificationService.createNotification = originalNotify;
+  baseModel.pool.getConnection = originalGetConnection;
 });

@@ -1,3 +1,5 @@
+const { validationResult } = require("express-validator");
+
 function withValidation(validator, redirectTo) {
   return (req, res, next) => {
     const errors = validator(req.body, req);
@@ -11,4 +13,17 @@ function withValidation(validator, redirectTo) {
   };
 }
 
-module.exports = { withValidation };
+function handleExpressValidation(redirectTo) {
+  return (req, res, next) => {
+    const result = validationResult(req);
+    if (result.isEmpty()) {
+      next();
+      return;
+    }
+
+    result.array().forEach((error) => req.flash("error", error.msg));
+    res.redirect(typeof redirectTo === "function" ? redirectTo(req) : redirectTo);
+  };
+}
+
+module.exports = { withValidation, handleExpressValidation };

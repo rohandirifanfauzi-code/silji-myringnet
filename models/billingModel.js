@@ -11,7 +11,7 @@ async function getEligibleCustomers() {
        FROM tugas_teknisi
        WHERE tugas_teknisi.id_pelanggan = pelanggan.id
          AND tugas_teknisi.tipe_tugas = 'psb'
-         AND tugas_teknisi.status = 'SELESAI'
+         AND tugas_teknisi.status = 'selesai'
      )
      ORDER BY pelanggan.id ASC`
   );
@@ -37,7 +37,7 @@ async function hasCompletedPsbTask(customerId) {
      FROM tugas_teknisi
      WHERE id_pelanggan = ?
        AND tipe_tugas = 'psb'
-       AND status = 'SELESAI'
+       AND status = 'selesai'
      LIMIT 1`,
     [customerId]
   );

@@ -5,6 +5,7 @@
     <div class="card-body">
       <h1 class="h4 mb-4"><%= item ? 'Edit' : 'Tambah' %> Teknisi</h1>
       <form method="post" action="<%= item ? `/teknisi/${item.id}?_method=PUT` : '/teknisi' %>" class="row g-3">
+        <%- include('../partials/csrf') %>
         <div class="col-md-6"><label class="form-label">Nama</label><input class="form-control" name="nama" value="<%= item?.nama || '' %>" required /></div>
         <div class="col-md-6"><label class="form-label">No HP</label><input class="form-control" name="no_hp" value="<%= item?.no_hp || '' %>" required /></div>
         <div class="col-md-6">
